@@ -6,14 +6,15 @@ module SidekiqFlow
     attribute :failed, Types::Strict::Bool.default(false)
     attribute :skipped, Types::Strict::Bool.default(false)
     attribute :loop_interval, Types::Strict::Integer.meta(omittable: true)
-    attribute :retries, Types::Strict::Integer.default(0)
+    attribute :retries, Types::Strict::Integer.default { SidekiqFlow.configuration.retries }
     attribute :job_id, Types::Strict::String.meta(omittable: true)
-    attribute :queue, Types::Strict::String.default('default')
+    attribute :queue, Types::Strict::String.default { SidekiqFlow.configuration.queue }
     attribute :children, Types::Strict::Array.of(Types::Class).default([])
+    attribute :params, Types::Strict::Hash.default({})
 
-    def self.build(attrs)
+    def self.build(attrs={})
       attrs[:start_time] = Time.now.to_i unless attrs.has_key?(:start_time)
-      super
+      new(attrs.reject { |k, v| v.nil? || read_only_attrs.include?(k) })
     end
 
     def self.read_only_attrs
@@ -21,7 +22,10 @@ module SidekiqFlow
     end
 
     def self.permanent_attrs
-      [:start_time, :end_time, :execution_time, :failed, :skipped, :loop_interval, :retries, :job_id, :queue, :children]
+      [
+        :start_time, :end_time, :execution_time, :failed, :skipped,
+        :loop_interval, :retries, :job_id, :queue, :children, :params
+      ]
     end
   end
 end

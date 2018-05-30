@@ -1,14 +1,20 @@
 module SidekiqFlow
   class Workflow < Model
     attribute :id, Types::Strict::Integer
-    attribute :tasks, Types::Strict::Array.of(Task).default([])
+    attribute :tasks, Types::Strict::Array.of(Task)
+    attribute :params, Types::Strict::Hash.default({})
 
-    def self.read_only_attrs
-      [:tasks]
+    def self.run!(id, params={})
+      workflow = new(id: id, tasks: task_list, params: params)
+      Client.new.store_workflow(workflow)
     end
 
     def self.permanent_attrs
-      [:id]
+      [:id, :params]
+    end
+
+    def self.task_list
+      raise NotImplementedError
     end
 
     def find_task_parents(task_class)
