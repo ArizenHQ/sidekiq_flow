@@ -9,6 +9,7 @@ module SidekiqFlow
     attribute :retries, Types::Strict::Integer.default(0)
     attribute :job_id, Types::Strict::String.meta(omittable: true)
     attribute :queue, Types::Strict::String.default('default')
+    attribute :children, Types::Strict::Array.of(Types::Class).default([])
 
     def self.build(attrs)
       attrs[:start_time] = Time.now.to_i unless attrs.has_key?(:start_time)

@@ -10,15 +10,15 @@ module SidekiqFlow
 
     def self.from_json(json)
       attrs = JSON.parse(json, symbolize_names: true)
-      ActiveSupport::Inflector.constantize(attrs[:class_name]).build(attrs)
+      ActiveSupport::Inflector.constantize(attrs[:klass]).build(attrs)
     end
 
-    def class_name
-      self.class.name
+    def klass
+      self.class
     end
 
     def to_json
-      (self.class.attribute_names + [:class_name]).map { |a| [a, public_send(a)] }.to_h.to_json
+      (self.class.attribute_names + [:klass]).map { |a| [a, public_send(a)] }.to_h.to_json
     end
   end
 end
