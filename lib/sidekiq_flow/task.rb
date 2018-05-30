@@ -19,5 +19,9 @@ module SidekiqFlow
     def self.read_only_attrs
       [:execution_time, :job_id, :failed, :skipped]
     end
+
+    def self.permanent_attrs
+      [:start_time, :end_time, :execution_time, :failed, :skipped, :loop_interval, :retries, :job_id, :queue, :children]
+    end
   end
 end

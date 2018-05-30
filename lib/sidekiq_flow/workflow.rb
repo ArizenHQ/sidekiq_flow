@@ -3,6 +3,14 @@ module SidekiqFlow
     attribute :id, Types::Strict::Integer
     attribute :tasks, Types::Strict::Array.of(Task).default([])
 
+    def self.read_only_attrs
+      [:tasks]
+    end
+
+    def self.permanent_attrs
+      [:id]
+    end
+
     def find_task_parents(task_class)
       tasks.select { |t| t.children.include?(task_class) }
     end
