@@ -13,7 +13,7 @@ module SidekiqFlow
     end
 
     def to_json
-      JSON.generate((self.class.permanent_attrs + [:class_name]).map { |a| [a, public_send(a)] }.to_h)
+      (self.class.permanent_attrs + [:class_name]).map { |a| [a, public_send(a)] }.to_h.to_json
     end
   end
 end

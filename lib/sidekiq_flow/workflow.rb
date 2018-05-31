@@ -1,13 +1,8 @@
 module SidekiqFlow
   class Workflow < Model
     attribute :id, Types::Strict::Integer
-    attribute :tasks, Types::Strict::Array.of(Task)
+    attribute :tasks, Types::Strict::Array.of(Task).default { task_list }
     attribute :params, Types::Strict::Hash.default({})
-
-    def self.run!(id, params={})
-      workflow = new(id: id, tasks: task_list, params: params)
-      Client.store_workflow(workflow)
-    end
 
     def self.permanent_attrs
       [:id, :params]
@@ -15,6 +10,10 @@ module SidekiqFlow
 
     def self.task_list
       raise NotImplementedError
+    end
+
+    def initial_tasks
+      @initial_tasks ||= tasks.select { |t| find_task_parents(t.class_name).empty? }
     end
 
     def find_task_parents(task_class_name)
