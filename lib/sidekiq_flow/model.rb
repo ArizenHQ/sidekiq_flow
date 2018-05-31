@@ -4,12 +4,16 @@ module SidekiqFlow
       []
     end
 
-    def klass
-      self.class
+    def self.from_hash(attrs)
+      attrs[:class_name].constantize.new(attrs.reject { |k, v| v.nil? })
+    end
+
+    def class_name
+      self.class.name
     end
 
     def to_json
-      JSON.generate((self.class.permanent_attrs + [:klass]).map { |a| [a, public_send(a)] }.to_h)
+      JSON.generate((self.class.permanent_attrs + [:class_name]).map { |a| [a, public_send(a)] }.to_h)
     end
   end
 end
