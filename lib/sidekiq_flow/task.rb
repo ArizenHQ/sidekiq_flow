@@ -14,7 +14,7 @@ module SidekiqFlow
 
     def self.build(attrs={})
       attrs[:start_date] = Time.now.to_i unless attrs.has_key?(:start_date)
-      new(attrs.reject { |k, v| read_only_attrs.include?(k) })
+      super
     end
 
     def self.read_only_attrs

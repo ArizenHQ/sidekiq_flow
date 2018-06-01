@@ -1,5 +1,13 @@
 module SidekiqFlow
   class Model < Dry::Struct
+    def self.build(attrs={})
+      new(attrs.reject { |k, v| read_only_attrs.include?(k) })
+    end
+
+    def self.read_only_attrs
+      []
+    end
+
     def self.permanent_attrs
       []
     end

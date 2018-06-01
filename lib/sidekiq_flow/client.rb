@@ -1,8 +1,7 @@
 module SidekiqFlow
   class Client
     class << self
-      def run_workflow(workflow_class, workflow_id, params={})
-        workflow = workflow_class.new(id: id, params: params)
+      def run_workflow(workflow)
         store_workflow(workflow)
         workflow.initial_tasks.each { |t| run_task(workflow.id, t) }
       end

@@ -1,8 +1,13 @@
 module SidekiqFlow
   class Workflow < Model
     attribute :id, Types::Strict::Integer
-    attribute :tasks, Types::Strict::Array.of(Task).default { task_list }
+    attribute :tasks, Types::Strict::Array.of(Task).default([])
     attribute :params, Types::Strict::Hash.default({})
+
+    def self.build(attrs={})
+      attrs[:tasks] = task_list
+      super
+    end
 
     def self.permanent_attrs
       [:id, :params]
