@@ -9,8 +9,8 @@ module SidekiqFlow
 
     def self.attribute_names
       [
-        :start_date, :end_date, :loop_interval, :retries, :job_id, :queue, :children,
-        :tasks_to_clear, :tasks_to_skip, :status, :enqueued_at, :trigger_rule, :params
+        :start_date, :end_date, :loop_interval, :retries, :queue,
+        :children, :status, :enqueued_at, :trigger_rule, :params
       ]
     end
 
@@ -20,11 +20,8 @@ module SidekiqFlow
       @end_date = attrs[:end_date]
       @loop_interval = attrs[:loop_interval] || 0
       @retries = attrs[:retries] || SidekiqFlow.configuration.retries
-      @job_id = attrs[:job_id]
       @queue = attrs[:queue] || SidekiqFlow.configuration.queue
       @children = attrs[:children] || []
-      @tasks_to_clear = attrs[:tasks_to_clear] || []
-      @tasks_to_skip = attrs[:tasks_to_skip] || []
       @status = attrs[:status] || STATUS_PENDING
       @enqueued_at = attrs[:enqueued_at]
       @trigger_rule = attrs[:trigger_rule] || 'all_succeeded'
@@ -84,10 +81,6 @@ module SidekiqFlow
       @status == STATUS_AWAITING_RETRY
     end
 
-    def set_job!(job_id)
-      @job_id = job_id
-    end
-
     def no_retries?
       retries == 0
     end
@@ -100,9 +93,8 @@ module SidekiqFlow
       start_date.nil?
     end
 
-    def skip_externally!
-      skip!
-      (Sidekiq::ScheduledSet.new.to_a + Sidekiq::RetrySet.new.to_a).detect { |j| j.jid == job_id }.try(:delete)
+    def runnable?
+      enqueued? || awaiting_retry?
     end
   end
 end

@@ -25,7 +25,7 @@ module SidekiqFlow
 
       def enqueue_jobs(workflow_id, tasks)
         tasks.each do |task|
-          job_id = Sidekiq::Client.push(
+          Sidekiq::Client.push(
             {
               'class' => Worker,
               'args' => [workflow_id, task.klass],
@@ -34,7 +34,6 @@ module SidekiqFlow
               'retry' => task.retries
             }
           )
-          task.set_job!(job_id)
         end
       end
 

@@ -12,6 +12,7 @@ module SidekiqFlow
     def perform(workflow_id, task_class)
       workflow = Client.find_workflow(workflow_id)
       task = workflow.find_task(task_class)
+      return unless task.runnable?
       task.expired? ? task.fail! : perform_task(workflow, task)
       Client.run_workflow(workflow)
     end
@@ -30,8 +31,6 @@ module SidekiqFlow
       raise
     else
       task.succeed!
-      task.tasks_to_clear.each { |t| workflow.clear_tasks_branch!(t) }
-      task.tasks_to_skip.each { |t| t.skip_externally! }
     end
   end
 end
