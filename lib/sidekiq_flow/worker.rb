@@ -31,6 +31,7 @@ module SidekiqFlow
     else
       task.succeed!
       task.tasks_to_clear.each { |t| workflow.clear_tasks_branch!(t) }
+      task.tasks_to_skip.each { |t| t.skip_externally! }
     end
   end
 end
