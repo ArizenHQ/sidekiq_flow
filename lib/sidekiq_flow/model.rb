@@ -1,27 +1,25 @@
 module SidekiqFlow
-  class Model < Dry::Struct
-    def self.build(attrs={})
-      new(attrs.reject { |k, v| read_only_attrs.include?(k) })
-    end
-
-    def self.read_only_attrs
+  class Model
+    def self.attribute_names
       []
     end
 
-    def self.permanent_attrs
-      []
+    def self.from_hash(attrs={})
+      attrs[:klass].constantize.new(attrs)
     end
 
-    def self.from_hash(attrs)
-      attrs[:class_name].constantize.new(attrs.reject { |k, v| v.nil? })
+    def initialize(attrs={})
+      self.class.attribute_names.each do |attr_name|
+        class_eval { attr_reader attr_name }
+      end
     end
 
-    def class_name
-      self.class.name
+    def klass
+      self.class.to_s
     end
 
-    def to_json
-      (self.class.permanent_attrs + [:class_name]).map { |a| [a, public_send(a)] }.to_h.to_json
+    def to_h
+      (self.class.attribute_names + [:klass]).map { |a| [a, public_send(a)] }.to_h
     end
   end
 end

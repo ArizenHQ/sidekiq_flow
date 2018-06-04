@@ -1,65 +1,90 @@
 module SidekiqFlow
   class Task < Model
-    Statuses = Types::Strict::String.default('pending').enum('pending', 'enqueued' 'running', 'succeeded', 'failed', 'skipped')
-    Results = Types::Strict::Symbol.enum(:success, :skip, :repeat)
+    STATUS_PENDING = 'pending'
+    STATUS_ENQUEUED = 'enqueued'
+    STATUS_SUCCEEDED = 'succeeded'
+    STATUS_FAILED = 'failed'
+    STATUS_SKIPPED = 'skipped'
+    STATUS_AWAITING_RETRY = 'awaiting_retry'
 
-    attribute :start_date, (Types::Strict::Nil | Types::Strict::Integer).meta(omittable: true)
-    attribute :end_date, Types::Strict::Integer.meta(omittable: true)
-    attribute :loop_interval, Types::Strict::Integer.default(0)
-    attribute :retries, Types::Strict::Integer.default { SidekiqFlow.configuration.retries }
-    attribute :job_id, Types::Strict::String.meta(omittable: true)
-    attribute :queue, Types::Strict::String.default { SidekiqFlow.configuration.queue }
-    attribute :children, Types::Strict::Array.of(Types::Strict::String).default([])
-    attribute :params, Types::Strict::Hash.default({})
-    attribute :status, Statuses
+    def self.attribute_names
+      [
+        :start_date, :end_date, :loop_interval, :retries, :job_id, :queue,
+        :children, :tasks_to_clear, :status, :enqueued_at, :trigger_rule, :params
+      ]
+    end
 
-    def self.build(attrs={})
-      attrs[:start_date] = Time.now.to_i unless attrs.has_key?(:start_date)
+    def initialize(attrs={})
       super
-    end
-
-    def self.read_only_attrs
-      [:execution_time, :job_id, :status]
-    end
-
-    def self.permanent_attrs
-      [:start_date, :end_date, :loop_interval, :retries, :job_id, :queue, :children, :params, :status]
+      @start_date = attrs.fetch(:start_date, Time.now.to_i)
+      @end_date = attrs[:end_date]
+      @loop_interval = attrs[:loop_interval] || 0
+      @retries = attrs[:retries] || SidekiqFlow.configuration.retries
+      @job_id = attrs[:job_id]
+      @queue = attrs[:queue] || SidekiqFlow.configuration.queue
+      @children = attrs[:children] || []
+      @tasks_to_clear = attrs[:tasks_to_clear] || []
+      @status = attrs[:status] || STATUS_PENDING
+      @enqueued_at = attrs[:enqueued_at]
+      @trigger_rule = attrs[:trigger_rule] || 'all_succeeded'
+      @params = attrs[:params] || {}
     end
 
     def perform
       raise NotImplementedError
     end
 
-    def enqueue
-      new(status: Statuses['enqueued'])
+    def enqueue!(at=start_date)
+      @status = STATUS_ENQUEUED
+      @enqueued_at = at
     end
 
-    def run
-      new(status: Statuses['running'])
+    def succeed!
+      @status = STATUS_SUCCEEDED
     end
 
-    def succeed
-      new(status: Statuses['succeeded'])
+    def fail!
+      @status = STATUS_FAILED
     end
 
-    def fail
-      new(status: Statuses['failed'])
+    def skip!
+      @status = STATUS_SKIPPED
     end
 
-    def skip
-      new(status: Statuses['skip'])
+    def clear!
+      @status = STATUS_PENDING
     end
 
-    def clear
-      new(status: Statuses['pending'])
+    def await_retry!
+      @status = STATUS_AWAITING_RETRY
     end
 
-    def set_job(job_id)
-      new(job_id: job_id)
+    def enqueued?
+      @status == STATUS_ENQUEUED
     end
 
-    def clear_job
-      new(job_id: nil)
+    def succeeded?
+      @status == STATUS_SUCCEEDED
+    end
+
+    def failed?
+      @status == STATUS_FAILED
+    end
+
+    def skipped?
+      @status == STATUS_SKIPPED
+    end
+
+    def pending?
+      @status == STATUS_PENDING
+    end
+
+    def awaiting_retry?
+      @status == STATUS_AWAITING_RETRY
+    end
+
+    def set_job!(job_id)
+      @job_id = job_id
     end
 
     def no_retries?
@@ -68,6 +93,10 @@ module SidekiqFlow
 
     def expired?
       end_date.present? && Time.now > end_date
+    end
+
+    def external_trigger?
+      start_date.nil?
     end
   end
 end
