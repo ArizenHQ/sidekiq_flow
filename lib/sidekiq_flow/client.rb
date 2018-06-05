@@ -21,6 +21,12 @@ module SidekiqFlow
         store_workflow(workflow)
       end
 
+      def find_workflow_ids
+        connection_pool.with do |redis|
+          redis.scan_each(match: workflow_ids_pattern).map { |key| key.split('.').last }
+        end
+      end
+
       private
 
       def store_workflow(workflow)
@@ -55,6 +61,10 @@ module SidekiqFlow
 
       def workflow_key(workflow_id)
         "#{configuration.namespace}.#{workflow_id}"
+      end
+
+      def workflow_ids_pattern
+        "#{configuration.namespace}.*"
       end
     end
   end
