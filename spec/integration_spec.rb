@@ -252,4 +252,27 @@ RSpec.describe 'workflow' do
       end
     end
   end
+
+  describe 'task clearing' do
+    before do
+      allow(TestWorkflow).to receive(:task_list) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3']),
+          TestTask2.new(children: ['TestTask4']),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new
+        ]
+      }
+    end
+
+    it 'behaves properly' do
+      workflow = TestWorkflow.new(id: 123)
+      SidekiqFlow::Client.run_workflow(workflow)
+      SidekiqFlow::Worker.drain
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+
+      SidekiqFlow::Client.clear_workflow_branch(workflow.id, 'TestTask1')
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['pending', 'pending', 'pending', 'pending'])
+    end
+  end
 end

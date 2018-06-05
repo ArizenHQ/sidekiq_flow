@@ -17,6 +17,7 @@ module SidekiqFlow
       super
       @id = attrs.fetch(:id)
       @tasks = attrs[:tasks] || self.class.task_list
+      @tasks_per_class = @tasks.map { |t| [t.klass, t] }.to_h
       @params = attrs[:params] || {}
     end
 
@@ -31,7 +32,7 @@ module SidekiqFlow
     end
 
     def find_task(task_class)
-      tasks.detect { |t| t.klass == task_class }
+      @tasks_per_class[task_class]
     end
 
     def find_pending_tasks
@@ -42,6 +43,11 @@ module SidekiqFlow
       tasks.select(&:enqueued?)
     end
 
+    def clear_branch!(parent_task_class)
+      parent_task = find_task(parent_task_class)
+      (find_task_flat_children(parent_task) << parent_task).each(&:clear!)
+    end
+
     def to_h
       super.merge(tasks: tasks.map { |task| task.to_h })
     end
@@ -50,6 +56,11 @@ module SidekiqFlow
 
     def find_task_parents(task)
       tasks.select { |t| t.children.include?(task.klass) }
+    end
+
+    def find_task_flat_children(task)
+      children_tasks = task.children.map { |child_class| find_task(child_class) }
+      children_tasks + children_tasks.flat_map { |child_task| find_task_flat_children(child_task) }.uniq
     end
   end
 end
