@@ -86,7 +86,7 @@ module SidekiqFlow
     end
 
     def expired?
-      end_date.present? && Time.now > end_date
+      end_date.present? && Time.now.to_i > end_date
     end
 
     def external_trigger?

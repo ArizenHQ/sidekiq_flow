@@ -11,8 +11,11 @@ require "sidekiq_flow/model"
 require "sidekiq_flow/task"
 require "sidekiq_flow/workflow"
 require "sidekiq_flow/worker"
+require "sidekiq_flow/errors"
 require "sidekiq_flow/task_trigger_rules/base"
 require "sidekiq_flow/task_trigger_rules/all_succeeded"
+require "sidekiq_flow/task_trigger_rules/one_succeeded"
+require "sidekiq_flow/task_trigger_rules/all_done"
 
 module SidekiqFlow
   def self.configure

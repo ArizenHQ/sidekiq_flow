@@ -22,7 +22,10 @@ module SidekiqFlow
 
     def run!(externally_triggered_tasks)
       find_pending_tasks.each do |task|
-        task.enqueue!(Time.now.to_i) and next if task.external_trigger? && externally_triggered_tasks.include?(task.klass)
+        if task.external_trigger?
+          task.enqueue!(Time.now.to_i) if externally_triggered_tasks.include?(task.klass)
+          next
+        end
         task.enqueue! if TaskTriggerRules::Base.build(task.trigger_rule, find_task_parents(task)).met?
       end
     end
