@@ -28,7 +28,7 @@ module SidekiqFlow
       @params = attrs[:params] || {}
     end
 
-    def perform
+    def perform(workflow_params)
       raise NotImplementedError
     end
 

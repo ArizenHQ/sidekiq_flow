@@ -120,7 +120,7 @@ RSpec.describe 'workflow' do
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
 
-      allow_any_instance_of(TestTask1).to receive(:perform) { nil }
+      allow_any_instance_of(TestTask1).to receive(:perform)
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued', 'enqueued', 'pending'])
 
@@ -170,13 +170,13 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'skipped', 'pending'])
 
-        allow_any_instance_of(TestTask3).to receive(:perform) { nil }
+        allow_any_instance_of(TestTask3).to receive(:perform)
         workflow = TestWorkflow.new(id: 2)
         SidekiqFlow::Client.run_workflow(workflow)
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'succeeded', 'pending'])
 
-        allow_any_instance_of(TestTask2).to receive(:perform) { nil }
+        allow_any_instance_of(TestTask2).to receive(:perform)
         workflow = TestWorkflow.new(id: 3)
         SidekiqFlow::Client.run_workflow(workflow)
         SidekiqFlow::Worker.drain
@@ -204,13 +204,13 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'skipped', 'pending'])
 
-        allow_any_instance_of(TestTask3).to receive(:perform) { nil }
+        allow_any_instance_of(TestTask3).to receive(:perform)
         workflow = TestWorkflow.new(id: 2)
         SidekiqFlow::Client.run_workflow(workflow)
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'succeeded', 'succeeded'])
 
-        allow_any_instance_of(TestTask2).to receive(:perform) { nil }
+        allow_any_instance_of(TestTask2).to receive(:perform)
         workflow = TestWorkflow.new(id: 3)
         SidekiqFlow::Client.run_workflow(workflow)
         SidekiqFlow::Worker.drain
@@ -238,13 +238,13 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'skipped', 'succeeded'])
 
-        allow_any_instance_of(TestTask3).to receive(:perform) { nil }
+        allow_any_instance_of(TestTask3).to receive(:perform)
         workflow = TestWorkflow.new(id: 2)
         SidekiqFlow::Client.run_workflow(workflow)
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'succeeded', 'succeeded'])
 
-        allow_any_instance_of(TestTask2).to receive(:perform) { nil }
+        allow_any_instance_of(TestTask2).to receive(:perform)
         workflow = TestWorkflow.new(id: 3)
         SidekiqFlow::Client.run_workflow(workflow)
         SidekiqFlow::Worker.drain
