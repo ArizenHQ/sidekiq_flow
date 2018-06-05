@@ -1,1 +1,10 @@
+svg#workflow-graph {
+  g.node {
+    fill: white;
+    stroke: black;
+  }
 
+  g.edgePath {
+    stroke: black;
+  }
+}
