@@ -1,10 +1,41 @@
 svg#workflow-graph {
+  border: 1px solid gray;
+  overflow: hidden;
+
   g.node {
-    fill: white;
     stroke: black;
+    cursor: pointer;
+  }
+
+  g.node.pending {
+    fill: white;
+  }
+
+  g.node.succeeded {
+    fill: green;
+  }
+
+  g.node.failed {
+    fill: red;
+  }
+
+  g.node.enqueued {
+    fill: silver;
+  }
+
+  g.node.skipped {
+    fill: pink;
+  }
+
+  g.node.awaiting_retry {
+    fill: orange;
   }
 
   g.edgePath {
     stroke: black;
+  }
+
+  text {
+    fill: black;
   }
 }

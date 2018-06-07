@@ -15,8 +15,7 @@ module SidekiqFlow
         end
       end
 
-      def clear_workflow_branch(workflow_id, parent_task_class)
-        workflow = find_workflow(workflow_id)
+      def clear_workflow_branch(workflow, parent_task_class)
         workflow.clear_branch!(parent_task_class)
         store_workflow(workflow)
       end

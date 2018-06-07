@@ -269,9 +269,10 @@ RSpec.describe 'workflow' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.run_workflow(workflow)
       SidekiqFlow::Worker.drain
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+      workflow = SidekiqFlow::Client.find_workflow(workflow.id)
+      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
 
-      SidekiqFlow::Client.clear_workflow_branch(workflow.id, 'TestTask1')
+      SidekiqFlow::Client.clear_workflow_branch(workflow, 'TestTask1')
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['pending', 'pending', 'pending', 'pending'])
     end
   end
