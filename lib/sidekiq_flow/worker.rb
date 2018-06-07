@@ -20,7 +20,8 @@ module SidekiqFlow
     private
 
     def perform_task(workflow, task)
-      task.perform(workflow.params)
+      task.set_workflow_params!(workflow.params)
+      task.perform
     rescue SkipTask
       task.skip!
     rescue RepeatTask

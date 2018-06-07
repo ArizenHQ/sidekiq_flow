@@ -28,7 +28,7 @@ module SidekiqFlow
       @params = attrs[:params] || {}
     end
 
-    def perform(workflow_params)
+    def perform
       raise NotImplementedError
     end
 
@@ -96,5 +96,13 @@ module SidekiqFlow
     def runnable?
       enqueued? || awaiting_retry?
     end
+
+    def set_workflow_params!(params)
+      @workflow_params = params
+    end
+
+    private
+
+    attr_reader :workflow_params
   end
 end
