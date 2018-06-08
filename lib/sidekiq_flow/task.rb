@@ -9,8 +9,8 @@ module SidekiqFlow
 
     def self.attribute_names
       [
-        :start_date, :end_date, :loop_interval, :retries, :queue,
-        :children, :status, :enqueued_at, :trigger_rule, :params
+        :start_date, :end_date, :loop_interval, :retries, :queue, :children,
+        :status, :enqueued_at, :trigger_rule, :tasks_to_clear, :params, :job_id
       ]
     end
 
@@ -25,7 +25,9 @@ module SidekiqFlow
       @status = attrs[:status] || STATUS_PENDING
       @enqueued_at = attrs[:enqueued_at]
       @trigger_rule = attrs[:trigger_rule] || 'all_succeeded'
+      @tasks_to_clear = attrs[:tasks_to_clear] || []
       @params = attrs[:params] || {}
+      @job_id = attrs[:job_id]
     end
 
     def perform
@@ -38,14 +40,17 @@ module SidekiqFlow
     end
 
     def succeed!
+      set_job!(nil)
       @status = STATUS_SUCCEEDED
     end
 
     def fail!
+      set_job!(nil)
       @status = STATUS_FAILED
     end
 
     def skip!
+      set_job!(nil)
       @status = STATUS_SKIPPED
     end
 
@@ -55,6 +60,10 @@ module SidekiqFlow
 
     def await_retry!
       @status = STATUS_AWAITING_RETRY
+    end
+
+    def set_job!(job_id)
+      @job_id = job_id
     end
 
     def enqueued?
@@ -93,8 +102,12 @@ module SidekiqFlow
       start_date.nil?
     end
 
-    def runnable?
-      enqueued? || awaiting_retry?
+    def has_job?
+      job_id.present?
+    end
+
+    def ready_to_start?
+      enqueued? && job_id.nil?
     end
 
     def set_workflow_params!(params)

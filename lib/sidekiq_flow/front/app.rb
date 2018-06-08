@@ -39,7 +39,6 @@ module SidekiqFlow
       get '/workflow/:workflow_id/task/:task_class/clear' do |workflow_id, task_class|
         workflow = SidekiqFlow::Client.find_workflow(workflow_id)
         SidekiqFlow::Client.clear_workflow_branch(workflow, task_class)
-        SidekiqFlow::Client.run_workflow(workflow)
         ''
       end
     end

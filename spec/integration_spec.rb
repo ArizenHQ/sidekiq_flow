@@ -16,8 +16,20 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.run_workflow(workflow)
-      SidekiqFlow::Worker.drain
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.all?(&:succeeded?)).to be(true)
+
+      SidekiqFlow::Worker.perform_one
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued', 'enqueued', 'pending'])
+
+      SidekiqFlow::Worker.perform_one
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'enqueued', 'pending'])
+
+      SidekiqFlow::Worker.perform_one
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'enqueued'])
+
+      SidekiqFlow::Worker.perform_one
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+
+      expect(SidekiqFlow::Worker.jobs).to be_empty
     end
   end
 
@@ -114,6 +126,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.run_workflow(workflow)
+
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
 
@@ -254,26 +267,58 @@ RSpec.describe 'workflow' do
   end
 
   describe 'task clearing' do
-    before do
-      allow(TestWorkflow).to receive(:task_list) {
-        [
-          TestTask1.new(children: ['TestTask2', 'TestTask3']),
-          TestTask2.new(children: ['TestTask4']),
-          TestTask3.new(children: ['TestTask4']),
-          TestTask4.new
-        ]
-      }
+    context 'external' do
+      before do
+        allow(TestWorkflow).to receive(:task_list) {
+          [
+            TestTask1.new(children: ['TestTask2', 'TestTask3']),
+            TestTask2.new(children: ['TestTask4']),
+            TestTask3.new(children: ['TestTask4']),
+            TestTask4.new
+          ]
+        }
+      end
+
+      it 'behaves properly' do
+        workflow = TestWorkflow.new(id: 123)
+        SidekiqFlow::Client.run_workflow(workflow)
+        SidekiqFlow::Worker.drain
+        workflow = SidekiqFlow::Client.find_workflow(workflow.id)
+        expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+
+        SidekiqFlow::Client.clear_workflow_branch(workflow, 'TestTask1')
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
+      end
     end
 
-    it 'behaves properly' do
-      workflow = TestWorkflow.new(id: 123)
-      SidekiqFlow::Client.run_workflow(workflow)
-      SidekiqFlow::Worker.drain
-      workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+    context 'tasks_to_clear attribute' do
+      before do
+        allow(TestWorkflow).to receive(:task_list) {
+          [
+            TestTask1.new(children: ['TestTask2', 'TestTask3']),
+            TestTask2.new(children: ['TestTask4']),
+            TestTask3.new(children: ['TestTask4']),
+            TestTask4.new(tasks_to_clear: ['TestTask1'])
+          ]
+        }
+      end
 
-      SidekiqFlow::Client.clear_workflow_branch(workflow, 'TestTask1')
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['pending', 'pending', 'pending', 'pending'])
+      it 'behaves properly' do
+        workflow = TestWorkflow.new(id: 123)
+        SidekiqFlow::Client.run_workflow(workflow)
+
+        SidekiqFlow::Worker.perform_one
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued', 'enqueued', 'pending'])
+
+        SidekiqFlow::Worker.perform_one
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'enqueued', 'pending'])
+
+        SidekiqFlow::Worker.perform_one
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'enqueued'])
+
+        SidekiqFlow::Worker.perform_one
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
+      end
     end
   end
 end

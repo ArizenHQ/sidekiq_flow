@@ -39,8 +39,8 @@ module SidekiqFlow
       tasks.select(&:pending?)
     end
 
-    def find_enqueued_tasks
-      tasks.select(&:enqueued?)
+    def find_ready_to_start_tasks
+      tasks.select(&:ready_to_start?)
     end
 
     def clear_branch!(parent_task_class)

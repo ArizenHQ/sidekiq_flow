@@ -3,7 +3,7 @@ module SidekiqFlow
     class << self
       def run_workflow(workflow, externally_triggered_tasks=[])
         workflow.run!(externally_triggered_tasks)
-        enqueue_jobs(workflow.id, workflow.find_enqueued_tasks)
+        enqueue_jobs(workflow.id, workflow.find_ready_to_start_tasks)
         store_workflow(workflow)
       end
 
@@ -17,7 +17,7 @@ module SidekiqFlow
 
       def clear_workflow_branch(workflow, parent_task_class)
         workflow.clear_branch!(parent_task_class)
-        store_workflow(workflow)
+        run_workflow(workflow)
       end
 
       def find_workflow_ids
@@ -36,7 +36,7 @@ module SidekiqFlow
 
       def enqueue_jobs(workflow_id, tasks)
         tasks.each do |task|
-          Sidekiq::Client.push(
+          job_id = Sidekiq::Client.push(
             {
               'class' => Worker,
               'args' => [workflow_id, task.klass],
@@ -45,6 +45,7 @@ module SidekiqFlow
               'retry' => task.retries
             }
           )
+          task.set_job!(job_id)
         end
       end
 
