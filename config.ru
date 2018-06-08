@@ -1,2 +1,2 @@
-require './lib/sidekiq_flow/front/app'
+require './lib/sidekiq_flow'
 run SidekiqFlow::Front::App

@@ -1,8 +1,3 @@
-require 'sinatra'
-require 'sprockets'
-require 'uglifier'
-require 'sidekiq_flow'
-
 module SidekiqFlow
   module Front
     class App < Sinatra::Base

@@ -3,6 +3,9 @@ require 'active_support/all'
 require 'connection_pool'
 require 'redis'
 require 'sidekiq'
+require 'sinatra'
+require 'sprockets'
+require 'uglifier'
 
 require "sidekiq_flow/version"
 require "sidekiq_flow/configuration"
@@ -16,6 +19,7 @@ require "sidekiq_flow/task_trigger_rules/base"
 require "sidekiq_flow/task_trigger_rules/all_succeeded"
 require "sidekiq_flow/task_trigger_rules/one_succeeded"
 require "sidekiq_flow/task_trigger_rules/all_done"
+require "sidekiq_flow/front/app"
 
 module SidekiqFlow
   def self.configure
