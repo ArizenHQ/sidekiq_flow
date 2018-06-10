@@ -31,7 +31,7 @@ module SidekiqFlow
         erb :workflow
       end
 
-      get '/workflow/:workflow_id/task/:task_class/clear' do |workflow_id, task_class|
+      get '/workflow/:workflow_id/task/:task_class/retry' do |workflow_id, task_class|
         SidekiqFlow::Client.restart_task(workflow_id, task_class)
         ''
       end
