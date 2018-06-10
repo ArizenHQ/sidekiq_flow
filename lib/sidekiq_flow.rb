@@ -3,7 +3,7 @@ require 'active_support/all'
 require 'connection_pool'
 require 'redis'
 require 'sidekiq'
-require 'sinatra'
+require 'sinatra/base'
 require 'sprockets'
 require 'uglifier'
 
