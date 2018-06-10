@@ -4,8 +4,8 @@ module SidekiqFlow
       []
     end
 
-    def self.from_hash(attrs={})
-      attrs[:klass].constantize.new(attrs)
+    def self.build(klass, attrs)
+      klass.constantize.new(attrs.deep_symbolize_keys)
     end
 
     def initialize(attrs={})
@@ -18,8 +18,8 @@ module SidekiqFlow
       self.class.to_s
     end
 
-    def to_h
-      (self.class.attribute_names + [:klass]).map { |a| [a, public_send(a)] }.to_h
+    def to_json
+      self.class.attribute_names.map { |a| [a, public_send(a)] }.to_h.to_json
     end
   end
 end

@@ -3,37 +3,42 @@ module SidekiqFlow
     include Sidekiq::Worker
 
     sidekiq_retries_exhausted do |msg|
-      workflow = Client.find_workflow(msg['args'][0])
-      task = workflow.find_task(msg['args'][1])
+      task = Client.find_task(*msg['args'])
       task.fail!
-      Client.run_workflow(workflow)
+      Client.store_task(task)
     end
 
     def perform(workflow_id, task_class)
-      workflow = Client.find_workflow(workflow_id)
-      task = workflow.find_task(task_class)
-      return unless task.has_job?
-      task.expired? ? task.fail! : perform_task(workflow, task)
-      Client.run_workflow(workflow)
+      task = Client.find_task(workflow_id, task_class)
+      task.expired? ? task.fail! : perform_task(task)
+      Client.store_task(task)
+      enqueue_task_children(task)
+      Client.restart_task(workflow_id, task.task_to_restart) if task.task_to_restart.present?
     end
 
     private
 
-    def perform_task(workflow, task)
-      task.set_workflow_params!(workflow.params)
+    def perform_task(task)
       task.perform
     rescue SkipTask
       task.skip!
     rescue RepeatTask
-      task.set_job!(nil)
-      task.enqueue!((Time.now + task.loop_interval).to_i)
+      Client.enqueue_task(task, (Time.now + task.loop_interval).to_i)
     rescue StandardError
       task.no_retries? ? task.fail! : task.await_retry!
-      Client.run_workflow(workflow)
+      Client.store_task(task)
       raise
     else
       task.succeed!
-      task.tasks_to_clear.each { |t| workflow.clear_branch!(t) }
+    end
+
+    def enqueue_task_children(task)
+      task.children.each do |child_class|
+        child_task = Client.find_task(task.workflow_id, child_class)
+        next unless child_task.ready_to_start?
+        Client.enqueue_task(child_task)
+        Client.store_task(child_task)
+      end
     end
   end
 end

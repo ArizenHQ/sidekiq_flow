@@ -9,10 +9,12 @@ module SidekiqFlow
 
     def self.attribute_names
       [
-        :start_date, :end_date, :loop_interval, :retries, :queue, :children,
-        :status, :enqueued_at, :trigger_rule, :tasks_to_clear, :params, :job_id
+        :start_date, :end_date, :loop_interval, :retries, :queue,
+        :children, :status, :trigger_rule, :task_to_restart, :params
       ]
     end
+
+    attr_reader :workflow_id, :workflow_params, :parents
 
     def initialize(attrs={})
       super
@@ -23,34 +25,29 @@ module SidekiqFlow
       @queue = attrs[:queue] || SidekiqFlow.configuration.queue
       @children = attrs[:children] || []
       @status = attrs[:status] || STATUS_PENDING
-      @enqueued_at = attrs[:enqueued_at]
       @trigger_rule = attrs[:trigger_rule] || 'all_succeeded'
-      @tasks_to_clear = attrs[:tasks_to_clear] || []
+      @task_to_restart = attrs[:task_to_restart] || []
       @params = attrs[:params] || {}
-      @job_id = attrs[:job_id]
+      @parents = attrs[:parents] || []
     end
 
     def perform
       raise NotImplementedError
     end
 
-    def enqueue!(at=start_date)
+    def enqueue!
       @status = STATUS_ENQUEUED
-      @enqueued_at = at
     end
 
     def succeed!
-      set_job!(nil)
       @status = STATUS_SUCCEEDED
     end
 
     def fail!
-      set_job!(nil)
       @status = STATUS_FAILED
     end
 
     def skip!
-      set_job!(nil)
       @status = STATUS_SKIPPED
     end
 
@@ -60,10 +57,6 @@ module SidekiqFlow
 
     def await_retry!
       @status = STATUS_AWAITING_RETRY
-    end
-
-    def set_job!(job_id)
-      @job_id = job_id
     end
 
     def enqueued?
@@ -102,20 +95,18 @@ module SidekiqFlow
       start_date.nil?
     end
 
-    def has_job?
-      job_id.present?
-    end
-
     def ready_to_start?
-      enqueued? && job_id.nil?
+      pending? && !external_trigger? && trigger_rule_instance.met?
     end
 
-    def set_workflow_params!(params)
-      @workflow_params = params
+    def set_workflow_data!(workflow_id, workflow_params)
+      @workflow_id, @workflow_params = workflow_id, workflow_params
     end
 
     private
 
-    attr_reader :workflow_params
+    def trigger_rule_instance
+      @trigger_rule_instance ||= TaskTriggerRules::Base.build(trigger_rule, workflow_id, parents)
+    end
   end
 end

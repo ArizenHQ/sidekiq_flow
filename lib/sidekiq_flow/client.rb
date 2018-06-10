@@ -1,23 +1,52 @@
 module SidekiqFlow
   class Client
     class << self
-      def run_workflow(workflow, externally_triggered_tasks=[])
-        workflow.run!(externally_triggered_tasks)
-        enqueue_jobs(workflow.id, workflow.find_ready_to_start_tasks)
+      def start_workflow(workflow)
         store_workflow(workflow)
+        tasks = workflow.find_ready_to_start_tasks
+        tasks.each { |task| enqueue_task(task) }
+        store_workflow(workflow)
+      end
+
+      def start_task(workflow_id, task_class)
+        task = find_task(workflow_id, task_class)
+        raise TaskUnstartable unless task.pending?
+        enqueue_task(task)
+        store_task(task)
+      end
+
+      def restart_task(workflow_id, task_class)
+        workflow = find_workflow(workflow_id)
+        workflow.clear_branch!(task_class)
+        store_workflow(workflow)
+        start_task(workflow_id, task_class)
+      end
+
+      def store_workflow(workflow)
+        connection_pool.with do |redis|
+          redis.hmset(
+            workflow_key(workflow.id),
+            [:klass, workflow.klass, :attrs, workflow.to_json] + workflow.tasks.map { |t| [t.klass, t.to_json] }.flatten
+          )
+        end
+      end
+
+      def store_task(task)
+        connection_pool.with do |redis|
+          redis.hset(workflow_key(task.workflow_id), task.klass, task.to_json)
+        end
       end
 
       def find_workflow(workflow_id)
         connection_pool.with do |redis|
-          workflow_json = redis.get(workflow_key(workflow_id))
-          raise WorkflowNotFound if workflow_json.nil?
-          Workflow.from_hash(JSON.parse(workflow_json).deep_symbolize_keys)
+          workflow_redis_hash = redis.hgetall(workflow_key(workflow_id))
+          raise WorkflowNotFound if workflow_redis_hash.empty?
+          Workflow.from_redis_hash(workflow_redis_hash)
         end
       end
 
-      def clear_workflow_branch(workflow, parent_task_class)
-        workflow.clear_branch!(parent_task_class)
-        run_workflow(workflow)
+      def find_task(workflow_id, task_class)
+        find_workflow(workflow_id).find_task(task_class)
       end
 
       def find_workflow_ids
@@ -26,28 +55,20 @@ module SidekiqFlow
         end
       end
 
+      def enqueue_task(task, at=nil)
+        task.enqueue!
+        Sidekiq::Client.push(
+          {
+            'class' => Worker,
+            'args' => [task.workflow_id, task.klass],
+            'queue' => task.queue,
+            'at' => at || task.start_date,
+            'retry' => task.retries
+          }
+        )
+      end
+
       private
-
-      def store_workflow(workflow)
-        connection_pool.with do |redis|
-          redis.set(workflow_key(workflow.id), workflow.to_h.to_json)
-        end
-      end
-
-      def enqueue_jobs(workflow_id, tasks)
-        tasks.each do |task|
-          job_id = Sidekiq::Client.push(
-            {
-              'class' => Worker,
-              'args' => [workflow_id, task.klass],
-              'queue' => task.queue,
-              'at' => task.enqueued_at,
-              'retry' => task.retries
-            }
-          )
-          task.set_job!(job_id)
-        end
-      end
 
       def configuration
         @configuration ||= SidekiqFlow.configuration
