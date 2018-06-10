@@ -5,12 +5,12 @@ require "sidekiq_flow/version"
 Gem::Specification.new do |spec|
   spec.name          = "sidekiq_flow"
   spec.version       = SidekiqFlow::VERSION
-  spec.authors       = ["piasekhgw"]
-  spec.email         = ["wojciech.piasecki@netguru.pl"]
+  spec.authors       = ["vrenaudineau"]
+  spec.email         = ["vincent@coinhouse.com"]
 
   spec.summary       = %q{Write a short summary, because RubyGems requires one.}
   spec.description   = %q{Write a longer description or delete this line.}
-  spec.homepage      = "https://github.com//piasekhgw/sidekiq_flow"
+  spec.homepage      = "https://github.com/ArizenHQ/sidekiq_flow"
   spec.license       = "MIT"
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
