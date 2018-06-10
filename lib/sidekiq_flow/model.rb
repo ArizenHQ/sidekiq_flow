@@ -18,8 +18,12 @@ module SidekiqFlow
       self.class.to_s
     end
 
+    def to_h
+      self.class.attribute_names.map { |a| [a, public_send(a)] }.to_h
+    end
+
     def to_json
-      self.class.attribute_names.map { |a| [a, public_send(a)] }.to_h.to_json
+      to_h.to_json
     end
   end
 end

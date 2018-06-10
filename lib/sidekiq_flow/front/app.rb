@@ -27,13 +27,12 @@ module SidekiqFlow
       end
 
       get '/workflow/:id' do |id|
-        @workflow = SidekiqFlow::Client.find_workflow(id)
+        @workflow = WorkflowSerializer.new(SidekiqFlow::Client.find_workflow(id))
         erb :workflow
       end
 
       get '/workflow/:workflow_id/task/:task_class/clear' do |workflow_id, task_class|
-        workflow = SidekiqFlow::Client.find_workflow(workflow_id)
-        SidekiqFlow::Client.clear_workflow_branch(workflow, task_class)
+        SidekiqFlow::Client.restart_task(workflow_id, task_class)
         ''
       end
     end
