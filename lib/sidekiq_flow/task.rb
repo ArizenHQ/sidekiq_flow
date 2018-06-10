@@ -9,8 +9,8 @@ module SidekiqFlow
 
     def self.attribute_names
       [
-        :start_date, :end_date, :loop_interval, :retries, :queue,
-        :children, :status, :trigger_rule, :task_to_restart, :params
+        :start_date, :end_date, :loop_interval, :retries,
+        :queue, :children, :status, :trigger_rule, :params
       ]
     end
 
@@ -26,7 +26,6 @@ module SidekiqFlow
       @children = attrs[:children] || []
       @status = attrs[:status] || STATUS_PENDING
       @trigger_rule = attrs[:trigger_rule] || 'all_succeeded'
-      @task_to_restart = attrs[:task_to_restart] || []
       @params = attrs[:params] || {}
       @parents = attrs[:parents] || []
     end

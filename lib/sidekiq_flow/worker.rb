@@ -13,7 +13,6 @@ module SidekiqFlow
       task.expired? ? task.fail! : perform_task(task)
       Client.store_task(task)
       enqueue_task_children(task)
-      Client.restart_task(workflow_id, task.task_to_restart) if task.task_to_restart.present?
     end
 
     private
