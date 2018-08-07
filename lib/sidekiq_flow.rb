@@ -17,7 +17,7 @@ require "sidekiq_flow/worker"
 require "sidekiq_flow/errors"
 require "sidekiq_flow/task_trigger_rules/base"
 require "sidekiq_flow/task_trigger_rules/all_succeeded"
-require "sidekiq_flow/task_trigger_rules/one_succeeded"
+require "sidekiq_flow/task_trigger_rules/number_succeeded"
 require "sidekiq_flow/front/app"
 require "sidekiq_flow/front/serializers/workflow_serializer"
 

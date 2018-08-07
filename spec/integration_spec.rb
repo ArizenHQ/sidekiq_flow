@@ -199,14 +199,14 @@ RSpec.describe 'workflow' do
       end
     end
 
-    context 'one_succeeded' do
+    context 'number_succeeded' do
       before do
         allow(TestWorkflow).to receive(:initial_tasks) {
           [
             TestTask1.new(children: ['TestTask2', 'TestTask3']),
             TestTask2.new(children: ['TestTask4']),
             TestTask3.new(children: ['TestTask4']),
-            TestTask4.new(trigger_rule: 'one_succeeded')
+            TestTask4.new(trigger_rule: ['number_succeeded', {number: 1}])
           ]
         }
       end

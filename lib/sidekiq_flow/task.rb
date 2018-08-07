@@ -25,7 +25,7 @@ module SidekiqFlow
       @queue = attrs[:queue] || SidekiqFlow.configuration.queue
       @children = attrs[:children] || []
       @status = attrs[:status] || STATUS_PENDING
-      @trigger_rule = attrs[:trigger_rule] || 'all_succeeded'
+      @trigger_rule = attrs[:trigger_rule] || ['all_succeeded', {}]
       @params = attrs[:params] || {}
       @parents = attrs[:parents] || []
     end
@@ -105,7 +105,7 @@ module SidekiqFlow
     private
 
     def trigger_rule_instance
-      @trigger_rule_instance ||= TaskTriggerRules::Base.build(trigger_rule, workflow_id, parents)
+      @trigger_rule_instance ||= TaskTriggerRules::Base.build(trigger_rule[0], trigger_rule[1], workflow_id, parents)
     end
   end
 end
