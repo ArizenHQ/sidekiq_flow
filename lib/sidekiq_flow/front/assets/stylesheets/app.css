@@ -1,6 +1,8 @@
 svg#workflow-graph {
   border: 1px solid gray;
   overflow: hidden;
+  height: 100%;
+  padding-top: 10px;
 
   g.node {
     stroke: black;
