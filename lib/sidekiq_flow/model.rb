@@ -25,5 +25,9 @@ module SidekiqFlow
     def to_json
       to_h.to_json
     end
+
+    def to_s
+      klass.demodulize.underscore
+    end
   end
 end
