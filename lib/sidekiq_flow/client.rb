@@ -45,6 +45,12 @@ module SidekiqFlow
         end
       end
 
+      def destroy_workflow(workflow_id)
+        connection_pool.with do |redis|
+          redis.del(workflow_key(workflow_id))
+        end
+      end
+
       def find_task(workflow_id, task_class)
         find_workflow(workflow_id).find_task(task_class)
       end

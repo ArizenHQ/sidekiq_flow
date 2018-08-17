@@ -46,6 +46,10 @@ module SidekiqFlow
       end
     end
 
+    def finished?
+      raise NotImplementedError
+    end
+
     private
 
     attr_reader :tasks_per_class
