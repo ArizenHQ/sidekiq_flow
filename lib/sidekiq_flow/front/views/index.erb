@@ -1,3 +1,9 @@
+<p>
+  <a class='btn btn-danger float-right' href="<%= app_prefix %>/workflows/succeeded/destroy" onclick="return confirm('Are you sure?')">
+    <i class='fas fa-trash'></i>&nbsp;Destroy succeeded workflows
+  </a>
+</p>
+
 <h1>Workflows</h1>
 
 <table id='workflows-table' class='display' style='width:100%'>
@@ -22,7 +28,9 @@
           <%= workflow.third.zero? ? '-' : Time.at(workflow.third) %>
         </td>
         <td>
-          <a href="<%= app_prefix %>/workflow/<%= workflow.first %>/destroy" onclick="return confirm('Are you sure?')"><i class='fas fa-trash'></i></a>
+          <a href="<%= app_prefix %>/workflow/<%= workflow.first %>/destroy" onclick="return confirm('Are you sure?')">
+            <i class='fas fa-trash'></i>
+          </a>
         </td>
       </tr>
     <% end %>

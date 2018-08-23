@@ -23,10 +23,9 @@ module SidekiqFlow
       end
 
       def store_workflow(workflow)
-        workflow_key = generate_workflow_key(workflow)
         connection_pool.with do |redis|
           redis.hmset(
-            workflow_key,
+            generate_workflow_key(workflow),
             [:klass, workflow.klass, :attrs, workflow.to_json] + workflow.tasks.map { |t| [t.klass, t.to_json] }.flatten
           )
         end
@@ -52,13 +51,21 @@ module SidekiqFlow
         end
       end
 
+      def destroy_succeeded_workflows
+        workflow_keys = find_workflow_keys(succeeded_workflow_key_pattern)
+        return if workflow_keys.empty?
+        connection_pool.with do |redis|
+          redis.del(*workflow_keys)
+        end
+      end
+
       def find_task(workflow_id, task_class)
         find_workflow(workflow_id).find_task(task_class)
       end
 
-      def find_workflow_keys
+      def find_workflow_keys(pattern=workflow_key_pattern)
         connection_pool.with do |redis|
-          redis.scan_each(match: workflow_key_pattern).map { |key| key.split('.').last }
+          redis.scan_each(match: pattern).to_a
         end
       end
 
@@ -104,6 +111,10 @@ module SidekiqFlow
 
       def workflow_key_pattern
         "#{configuration.namespace}.*"
+      end
+
+      def succeeded_workflow_key_pattern
+        "#{configuration.namespace}.*_*_[^0]*"
       end
     end
   end

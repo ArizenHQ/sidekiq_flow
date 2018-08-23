@@ -22,7 +22,7 @@ module SidekiqFlow
       end
 
       get '/' do
-        @workflows = SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('_').map(&:to_i) }
+        @workflows = SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').map(&:to_i) }
         erb :index
       end
 
@@ -33,6 +33,11 @@ module SidekiqFlow
 
       get '/workflow/:id/destroy' do |id|
         SidekiqFlow::Client.destroy_workflow(id)
+        redirect "#{app_prefix}/"
+      end
+
+      get '/workflows/succeeded/destroy' do
+        SidekiqFlow::Client.destroy_succeeded_workflows
         redirect "#{app_prefix}/"
       end
 
