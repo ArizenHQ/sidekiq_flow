@@ -31,6 +31,11 @@ module SidekiqFlow
         erb :workflow
       end
 
+      get '/workflow/:id/destroy' do |id|
+        SidekiqFlow::Client.destroy_workflow(id)
+        redirect "#{app_prefix}/"
+      end
+
       get '/workflow/:workflow_id/task/:task_class/retry' do |workflow_id, task_class|
         SidekiqFlow::Client.restart_task(workflow_id, task_class)
         ''
