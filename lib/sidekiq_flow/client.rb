@@ -2,7 +2,7 @@ module SidekiqFlow
   class Client
     class << self
       def start_workflow(workflow)
-        store_workflow(workflow)
+        store_workflow(workflow, true)
         tasks = workflow.find_ready_to_start_tasks
         tasks.each { |task| enqueue_task(task) }
         store_workflow(workflow)
@@ -22,10 +22,11 @@ module SidekiqFlow
         start_task(workflow_id, task_class)
       end
 
-      def store_workflow(workflow)
+      def store_workflow(workflow, initial=false)
+        workflow_key = initial ? generate_initial_workflow_key(workflow.id) : find_workflow_key(workflow.id)
         connection_pool.with do |redis|
           redis.hmset(
-            generate_workflow_key(workflow),
+            workflow_key,
             [:klass, workflow.klass, :attrs, workflow.to_json] + workflow.tasks.map { |t| [t.klass, t.to_json] }.flatten
           )
         end
@@ -35,6 +36,8 @@ module SidekiqFlow
         connection_pool.with do |redis|
           redis.hset(find_workflow_key(task.workflow_id), task.klass, task.to_json)
         end
+        return unless workflow_succeeded?(task.workflow_id)
+        succeed_workflow(task.workflow_id)
       end
 
       def find_workflow(workflow_id)
@@ -82,6 +85,12 @@ module SidekiqFlow
         )
       end
 
+      def find_workflow_key(workflow_id)
+        connection_pool.with do |redis|
+          redis.scan_each(match: "#{configuration.namespace}.#{workflow_id}_*").first
+        end
+      end
+
       private
 
       def configuration
@@ -94,19 +103,19 @@ module SidekiqFlow
         end
       end
 
-      def find_workflow_key(workflow_id)
-        connection_pool.with do |redis|
-          redis.scan_each(match: "#{configuration.namespace}.#{workflow_id}_*").first
-        end
+      def generate_initial_workflow_key(workflow_id)
+        "#{configuration.namespace}.#{workflow_id}_#{Time.now.to_i}_0"
       end
 
-      def generate_workflow_key(workflow)
-        current_key = find_workflow_key(workflow.id)
-        return "#{configuration.namespace}.#{workflow.id}_#{Time.now.to_i}_0" if current_key.nil?
-        return current_key unless workflow.succeeded?
-        _id, started_at, succeeded_at = current_key.split('_').map(&:to_i)
-        return current_key unless succeeded_at.zero?
-        "#{configuration.namespace}.#{workflow.id}_#{started_at}_#{Time.now.to_i}"
+      def workflow_succeeded?(workflow_id)
+        find_workflow(workflow_id).succeeded?
+      end
+
+      def succeed_workflow(workflow_id)
+        current_key = find_workflow_key(workflow_id)
+        connection_pool.with do |redis|
+          redis.rename(current_key, current_key.chop.concat(Time.now.to_i.to_s))
+        end
       end
 
       def workflow_key_pattern
