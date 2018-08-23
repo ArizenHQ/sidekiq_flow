@@ -22,7 +22,7 @@ module SidekiqFlow
       end
 
       get '/' do
-        @worklow_ids = SidekiqFlow::Client.find_workflow_ids.map(&:to_i).sort.reverse
+        @workflows = SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('_').map(&:to_i) }
         erb :index
       end
 

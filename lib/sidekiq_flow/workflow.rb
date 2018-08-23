@@ -46,8 +46,8 @@ module SidekiqFlow
       end
     end
 
-    def finished?
-      raise NotImplementedError
+    def succeeded?
+      false
     end
 
     private

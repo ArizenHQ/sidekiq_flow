@@ -1,9 +1,9 @@
 <h1>Workflows</h1>
 
 <ul class='list-group'>
-  <% @worklow_ids.each do |id| %>
+  <% @workflows.each do |workflow| %>
     <li class='list-group-item'>
-      <a href="<%= app_prefix %>/workflow/<%= id %>">Workflow <%= id %></a>
+      <a href="<%= app_prefix %>/workflow/<%= workflow.first %>">Workflow <%= workflow.first %></a>
     </li>
   <% end %>
 </ul>
