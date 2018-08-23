@@ -262,4 +262,31 @@ RSpec.describe 'workflow' do
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
     end
   end
+
+  describe 'destroying workflows' do
+    before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3']),
+          TestTask2.new(children: ['TestTask4']),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new
+        ]
+      }
+    end
+
+    it 'behaves properly' do
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 1))
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 2))
+      SidekiqFlow::Worker.drain
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 3))
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 4))
+
+      SidekiqFlow::Client.destroy_workflow(4)
+      expect(SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').first.to_i }).to match_array([1, 2, 3])
+
+      SidekiqFlow::Client.destroy_succeeded_workflows
+      expect(SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').first.to_i }).to eq([3])
+    end
+  end
 end
