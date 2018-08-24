@@ -16,18 +16,23 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued', 'enqueued', 'pending'])
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'enqueued', 'pending'])
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'enqueued'])
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_\d{2,}$/)
 
       expect(SidekiqFlow::Worker.jobs).to be_empty
     end
@@ -255,6 +260,33 @@ RSpec.describe 'workflow' do
 
       SidekiqFlow::Client.restart_task(workflow.id, 'TestTask1')
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
+    end
+  end
+
+  describe 'destroying workflows' do
+    before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3']),
+          TestTask2.new(children: ['TestTask4']),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new
+        ]
+      }
+    end
+
+    it 'behaves properly' do
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 1))
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 2))
+      SidekiqFlow::Worker.drain
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 3))
+      SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 4))
+
+      SidekiqFlow::Client.destroy_workflow(4)
+      expect(SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').first.to_i }).to match_array([1, 2, 3])
+
+      SidekiqFlow::Client.destroy_succeeded_workflows
+      expect(SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').first.to_i }).to eq([3])
     end
   end
 end

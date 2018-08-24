@@ -22,13 +22,23 @@ module SidekiqFlow
       end
 
       get '/' do
-        @worklow_ids = SidekiqFlow::Client.find_workflow_ids.map(&:to_i).sort.reverse
+        @workflows = SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').map(&:to_i) }
         erb :index
       end
 
       get '/workflow/:id' do |id|
         @workflow = WorkflowSerializer.new(SidekiqFlow::Client.find_workflow(id))
         erb :workflow
+      end
+
+      get '/workflow/:id/destroy' do |id|
+        SidekiqFlow::Client.destroy_workflow(id)
+        redirect "#{app_prefix}/"
+      end
+
+      get '/workflows/succeeded/destroy' do
+        SidekiqFlow::Client.destroy_succeeded_workflows
+        redirect "#{app_prefix}/"
       end
 
       get '/workflow/:workflow_id/task/:task_class/retry' do |workflow_id, task_class|

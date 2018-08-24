@@ -1,9 +1,42 @@
+<p>
+  <a class='btn btn-danger float-right' href="<%= app_prefix %>/workflows/succeeded/destroy" onclick="return confirm('Are you sure?')">
+    <i class='fas fa-trash'></i>&nbsp;Destroy succeeded workflows
+  </a>
+</p>
+
 <h1>Workflows</h1>
 
-<ul class='list-group'>
-  <% @worklow_ids.each do |id| %>
-    <li class='list-group-item'>
-      <a href="<%= app_prefix %>/workflow/<%= id %>">Workflow <%= id %></a>
-    </li>
-  <% end %>
-</ul>
+<table id='workflows-table' class='display' style='width:100%'>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Started at</th>
+      <th>Succeeded at</th>
+      <th>#</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @workflows.each do |workflow| %>
+      <tr>
+        <td>
+          <a href="<%= app_prefix %>/workflow/<%= workflow.first %>"><%= workflow.first %></a>
+        </td>
+        <td>
+          <%= Time.at(workflow.second) %>
+        </td>
+        <td>
+          <%= workflow.third.zero? ? '-' : Time.at(workflow.third) %>
+        </td>
+        <td>
+          <a href="<%= app_prefix %>/workflow/<%= workflow.first %>/destroy" onclick="return confirm('Are you sure?')">
+            <i class='fas fa-trash'></i>
+          </a>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<script>
+  $('#workflows-table').DataTable({order: [[1, 'desc']]});
+</script>

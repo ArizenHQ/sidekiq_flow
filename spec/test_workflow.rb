@@ -15,4 +15,7 @@ class TestTask4 < SidekiqFlow::Task
 end
 
 class TestWorkflow < SidekiqFlow::Workflow
+  def succeeded?
+    find_task(TestTask4.to_s).succeeded?
+  end
 end
