@@ -9,7 +9,7 @@
 svg#workflow-graph {
   border: 1px solid gray;
   overflow: hidden;
-  height: 100%;
+  height: 70vh;
   padding-top: 10px;
 
   g.node {

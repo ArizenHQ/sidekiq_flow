@@ -91,16 +91,16 @@ module SidekiqFlow
         end
       end
 
-      private
-
-      def configuration
-        @configuration ||= SidekiqFlow.configuration
-      end
-
       def connection_pool
         @connection_pool ||= ConnectionPool.new(size: configuration.concurrency, timeout: 5) do
           Redis.new(url: configuration.redis_url)
         end
+      end
+
+      private
+
+      def configuration
+        @configuration ||= SidekiqFlow.configuration
       end
 
       def generate_initial_workflow_key(workflow_id)
