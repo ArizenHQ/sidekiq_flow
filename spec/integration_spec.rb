@@ -289,4 +289,29 @@ RSpec.describe 'workflow' do
       expect(SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').first.to_i }).to eq([3])
     end
   end
+
+  describe 'auto_succeed?' do
+    before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3'], end_date: (Time.now - 60).to_i),
+          TestTask2.new(children: ['TestTask4']),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new
+        ]
+      }
+      class TestTask1
+        def auto_succeed?
+          true
+        end
+      end
+    end
+
+    it 'behaves properly' do
+      workflow = TestWorkflow.new(id: 123)
+      SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::Worker.drain
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+    end
+  end
 end

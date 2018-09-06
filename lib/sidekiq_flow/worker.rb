@@ -11,7 +11,13 @@ module SidekiqFlow
     def perform(workflow_id, task_class)
       task = Client.find_task(workflow_id, task_class)
       return unless task.enqueued?
-      task.expired? ? task.fail! : perform_task(task)
+      if task.auto_succeed?
+        task.succeed!
+      elsif task.expired?
+        task.fail!
+      else
+        perform_task(task)
+      end
       Client.store_task(task)
       enqueue_task_children(task)
     end

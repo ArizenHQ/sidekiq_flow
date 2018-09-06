@@ -98,6 +98,10 @@ module SidekiqFlow
       pending? && !external_trigger? && trigger_rule_instance.met?
     end
 
+    def auto_succeed?
+      false
+    end
+
     def set_workflow_data!(workflow_id, workflow_params)
       @workflow_id, @workflow_params = workflow_id, workflow_params
     end
