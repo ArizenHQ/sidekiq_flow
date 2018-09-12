@@ -92,6 +92,12 @@ module SidekiqFlow
         end
       end
 
+      def set_task_queue(workflow_id, task_class, queue)
+        task = find_task(workflow_id, task_class)
+        task.set_queue!(queue)
+        store_task(task)
+      end
+
       def connection_pool
         @connection_pool ||= ConnectionPool.new(size: configuration.concurrency, timeout: 5) do
           Redis.new(url: configuration.redis_url)

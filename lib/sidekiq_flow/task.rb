@@ -58,6 +58,10 @@ module SidekiqFlow
       @status = STATUS_AWAITING_RETRY
     end
 
+    def set_queue!(queue)
+      @queue = queue
+    end
+
     def enqueued?
       @status == STATUS_ENQUEUED
     end

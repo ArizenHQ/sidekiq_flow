@@ -307,11 +307,52 @@ RSpec.describe 'workflow' do
       end
     end
 
+    after do
+      class TestTask1
+        def auto_succeed?
+          false
+        end
+      end
+    end
+
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::Worker.drain
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+    end
+  end
+
+  describe "setting task's queue" do
+    before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3']),
+          TestTask2.new(children: ['TestTask4'], queue: 'initial_queue'),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new
+        ]
+      }
+      class TestTask1
+        def perform
+          SidekiqFlow::Client.set_task_queue(workflow_id, 'TestTask2', 'new_queue')
+        end
+      end
+    end
+
+    after do
+      class TestTask1
+        def perform; end
+      end
+    end
+
+    it 'behaves properly' do
+      workflow = TestWorkflow.new(id: 123)
+      SidekiqFlow::Client.start_workflow(workflow)
+      expect(SidekiqFlow::Client.find_task(workflow.id, 'TestTask2').queue).to eq('initial_queue')
+
+      SidekiqFlow::Worker.perform_one
+      expect(SidekiqFlow::Client.find_task(workflow.id, 'TestTask2').queue).to eq('new_queue')
     end
   end
 end
