@@ -48,6 +48,7 @@ module SidekiqFlow
       raise
     else
       task.succeed!
+      TaskLogger.log(task.workflow_id, task.klass, :info, 'task succeeded')
     end
 
     def enqueue_task_children(task)
