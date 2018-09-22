@@ -16,6 +16,8 @@ module SidekiqFlow
       end
 
       def restart_task(workflow_id, task_class)
+        task = find_task(workflow_id, task_class)
+        return if task.enqueued? || task.awaiting_retry?
         workflow = find_workflow(workflow_id)
         workflow.clear_branch!(task_class)
         store_workflow(workflow)
@@ -72,6 +74,7 @@ module SidekiqFlow
             'retry' => task.retries
           }
         )
+        TaskLogger.log(task.workflow_id, task.klass, :info, 'task enqueued')
       end
 
       private
