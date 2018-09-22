@@ -13,10 +13,12 @@ module SidekiqFlow
         raise TaskUnstartable unless task.pending?
         enqueue_task(task, Time.now.to_i)
         store_task(task)
+        TaskLogger.log(workflow_id, task_class, :info, 'task enqueued')
       end
 
       def restart_task(workflow_id, task_class)
-        return if find_task(workflow_id, task_class).enqueued?
+        task = find_task(workflow_id, task_class)
+        return if task.enqueued? || task.awaiting_retry?
         workflow = find_workflow(workflow_id)
         workflow.clear_branch!(task_class)
         store_workflow(workflow)
