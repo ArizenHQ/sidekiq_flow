@@ -5,13 +5,20 @@ module SidekiqFlow
     sidekiq_retries_exhausted do |msg|
       task = Client.find_task(*msg['args'])
       task.fail!
+      TaskLogger.log(msg['args'][0], msg['args'][1], :warn, 'task retries exhausted')
       Client.store_task(task)
     end
 
     def perform(workflow_id, task_class)
+      TaskLogger.log(workflow_id, task_class, :info, 'task started')
       task = Client.find_task(workflow_id, task_class)
-      return unless task.enqueued?
-      task.expired? ? task.fail! : perform_task(task)
+      return if !task.enqueued? && !task.awaiting_retry?
+      if task.expired?
+        TaskLogger.log(workflow_id, task_class, :warn, 'task expired')
+        task.fail!
+      else
+        perform_task(task)
+      end
       Client.store_task(task)
       enqueue_task_children(task)
     end
@@ -22,10 +29,18 @@ module SidekiqFlow
       task.perform
     rescue SkipTask
       task.skip!
+      TaskLogger.log(task.workflow_id, task.klass, :info, 'task skipped')
     rescue RepeatTask
       Client.enqueue_task(task, (Time.now + task.loop_interval).to_i)
-    rescue StandardError
-      task.no_retries? ? task.fail! : task.await_retry!
+    rescue StandardError => e
+      task.set_error_msg!(e.to_s)
+      if task.no_retries?
+        task.fail!
+        TaskLogger.log(task.workflow_id, task.klass, :error, "task failed (no retries) - #{e}")
+      else
+        task.await_retry!
+        TaskLogger.log(task.workflow_id, task.klass, :error, "task failed (retries present) - #{e}")
+      end
       Client.store_task(task)
       raise
     else

@@ -9,8 +9,8 @@ module SidekiqFlow
 
     def self.attribute_names
       [
-        :start_date, :end_date, :loop_interval, :retries,
-        :queue, :children, :status, :trigger_rule, :params
+        :start_date, :end_date, :loop_interval, :retries, :queue,
+        :children, :status, :trigger_rule, :params, :error_msg
       ]
     end
 
@@ -28,6 +28,7 @@ module SidekiqFlow
       @trigger_rule = attrs[:trigger_rule] || ['all_succeeded', {}]
       @params = attrs[:params] || {}
       @parents = attrs[:parents] || []
+      @error_msg = attrs[:error_msg]
     end
 
     def perform
@@ -56,6 +57,10 @@ module SidekiqFlow
 
     def await_retry!
       @status = STATUS_AWAITING_RETRY
+    end
+
+    def set_error_msg!(msg)
+      @error_msg = msg
     end
 
     def enqueued?
