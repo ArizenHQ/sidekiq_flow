@@ -1,7 +1,7 @@
 <script src="<%= app_prefix %>/js/graph.js"></script>
 
 <h1>Workflow <%= @workflow.id %></h1>
-<svg id='workflow-graph' width='100%' height='400' data-workflow=<%= @workflow.to_json %>>
+<svg id='workflow-graph' width='100%' height='400' data-workflow='<%= @workflow.to_json %>'>
   <g class='viewport'></g>
 </svg>
 
