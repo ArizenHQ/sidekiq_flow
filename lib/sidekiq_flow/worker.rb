@@ -56,7 +56,6 @@ module SidekiqFlow
         child_task = Client.find_task(task.workflow_id, child_class)
         next unless child_task.ready_to_start?
         Client.enqueue_task(child_task)
-        Client.store_task(child_task)
       end
     end
   end

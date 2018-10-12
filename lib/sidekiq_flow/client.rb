@@ -5,14 +5,12 @@ module SidekiqFlow
         store_workflow(workflow, true)
         tasks = workflow.find_ready_to_start_tasks
         tasks.each { |task| enqueue_task(task) }
-        store_workflow(workflow)
       end
 
       def start_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
         raise TaskUnstartable unless task.pending?
         enqueue_task(task, Time.now.to_i)
-        store_task(task)
       end
 
       def restart_task(workflow_id, task_class)
@@ -76,6 +74,7 @@ module SidekiqFlow
 
       def enqueue_task(task, at=nil)
         task.enqueue!
+        store_task(task)
         Sidekiq::Client.push(
           {
             'class' => Worker,
