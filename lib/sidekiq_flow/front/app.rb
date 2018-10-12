@@ -45,6 +45,11 @@ module SidekiqFlow
         SidekiqFlow::Client.restart_task(workflow_id, task_class)
         ''
       end
+
+      get '/workflow/:workflow_id/task/:task_class/clear' do |workflow_id, task_class|
+        SidekiqFlow::Client.clear_task(workflow_id, task_class)
+        ''
+      end
     end
   end
 end

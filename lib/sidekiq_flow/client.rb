@@ -22,6 +22,12 @@ module SidekiqFlow
         start_task(workflow_id, task_class)
       end
 
+      def clear_task(workflow_id, task_class)
+        task = find_task(workflow_id, task_class)
+        task.clear!
+        store_task(task)
+      end
+
       def store_workflow(workflow, initial=false)
         workflow_key = initial ? generate_initial_workflow_key(workflow.id) : find_workflow_key(workflow.id)
         connection_pool.with do |redis|
