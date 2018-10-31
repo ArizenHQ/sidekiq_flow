@@ -2,9 +2,13 @@ module SidekiqFlow
   class Client
     class << self
       def start_workflow(workflow)
+        TaskLogger.log(workflow.id, 'None', :info, 'workflow starting 1')
         store_workflow(workflow, true)
+        TaskLogger.log(workflow.id, 'None', :info, 'workflow starting 2')
         tasks = workflow.find_ready_to_start_tasks
+        TaskLogger.log(workflow.id, 'None', :info, 'workflow starting 3')
         tasks.each { |task| enqueue_task(task) }
+        TaskLogger.log(workflow.id, 'None', :info, 'workflow starting 4')
       end
 
       def start_task(workflow_id, task_class)
