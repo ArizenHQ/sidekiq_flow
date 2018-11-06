@@ -1,5 +1,7 @@
 module SidekiqFlow
   class Client
+    SCAN_COUNT = 2000
+
     class << self
       def start_workflow(workflow)
         store_workflow(workflow, true)
@@ -74,7 +76,7 @@ module SidekiqFlow
 
       def find_workflow_keys(pattern=workflow_key_pattern)
         connection_pool.with do |redis|
-          redis.scan_each(match: pattern).to_a
+          redis.scan_each(match: pattern, count: SCAN_COUNT).to_a
         end
       end
 
@@ -95,7 +97,7 @@ module SidekiqFlow
 
       def find_workflow_key(workflow_id)
         connection_pool.with do |redis|
-          redis.scan_each(match: "#{configuration.namespace}.#{workflow_id}_*").first
+          redis.scan_each(match: "#{configuration.namespace}.#{workflow_id}_*", count: SCAN_COUNT).first
         end
       end
 
