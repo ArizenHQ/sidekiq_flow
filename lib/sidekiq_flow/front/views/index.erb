@@ -12,31 +12,16 @@
       <th>ID</th>
       <th>Started at</th>
       <th>Succeeded at</th>
-      <th>#</th>
+      <th class='no-sort'>#</th>
     </tr>
   </thead>
-  <tbody>
-    <% @workflows.each do |workflow| %>
-      <tr>
-        <td>
-          <a href="<%= app_prefix %>/workflow/<%= workflow.first %>"><%= workflow.first %></a>
-        </td>
-        <td>
-          <%= Time.at(workflow.second) %>
-        </td>
-        <td>
-          <%= workflow.third.zero? ? '-' : Time.at(workflow.third) %>
-        </td>
-        <td>
-          <a href="<%= app_prefix %>/workflow/<%= workflow.first %>/destroy" onclick="return confirm('Are you sure?')">
-            <i class='fas fa-trash'></i>
-          </a>
-        </td>
-      </tr>
-    <% end %>
-  </tbody>
 </table>
 
 <script>
-  $('#workflows-table').DataTable({order: [[1, 'desc']]});
+  $('#workflows-table').DataTable({
+    order: [[1, 'desc']],
+    processing: true,
+    serverSide: true,
+    ajax: "<%= app_prefix %>/workflows"
+  });
 </script>

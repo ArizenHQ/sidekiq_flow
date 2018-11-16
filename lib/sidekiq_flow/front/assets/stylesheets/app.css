@@ -49,3 +49,11 @@ svg#workflow-graph {
     fill: black;
   }
 }
+
+#workflows-table {
+  th.no-sort {
+    background-image: none;
+    pointer-events: none;
+    cursor: default;
+  }
+}

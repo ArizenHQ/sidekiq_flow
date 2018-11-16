@@ -12,7 +12,7 @@ module SidekiqFlow
 
       helpers do
         def app_prefix
-          request.fullpath[0...-request.path_info.size]
+          request.path[0...-request.path_info.size]
         end
       end
 
@@ -22,8 +22,25 @@ module SidekiqFlow
       end
 
       get '/' do
-        @workflows = SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').map(&:to_i) }
         erb :index
+      end
+
+      get '/workflows' do
+        search = DataTableSearch.new(
+          params['search']['value'],
+          params['order']['0']['column'].to_i,
+          params['order']['0']['dir'],
+          params['start'].to_i,
+          params['length'].to_i,
+          app_prefix
+        )
+        search.execute!
+
+        json(
+          recordsTotal: search.input_data_size,
+          recordsFiltered: search.filtered_data_size,
+          data: search.data
+        )
       end
 
       get '/workflow/:id' do |id|
