@@ -166,6 +166,7 @@ RSpec.describe 'workflow' do
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::Worker.drain
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['failed', 'pending', 'pending', 'pending'])
+      expect(SidekiqFlow::Client.find_task(workflow.id, 'TestTask1').error_msg).to eq('expired')
     end
   end
 

@@ -18,6 +18,7 @@ module SidekiqFlow
         TaskLogger.log(workflow_id, task_class, :info, 'task succeeded')
       elsif task.expired?
         TaskLogger.log(workflow_id, task_class, :warn, 'task expired')
+        task.set_error_msg!('expired')
         task.fail!
       else
         perform_task(task)
