@@ -10,7 +10,7 @@ module SidekiqFlow
 
     def initialize(attrs={})
       self.class.attribute_names.each do |attr_name|
-        class_eval { attr_reader attr_name }
+        class_eval { attr_accessor attr_name }
       end
     end
 
