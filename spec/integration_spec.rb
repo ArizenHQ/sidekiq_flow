@@ -117,6 +117,31 @@ RSpec.describe 'workflow' do
     end
   end
 
+  describe 'task reptition with delay' do
+    let(:first_job_at) { Sidekiq::Worker.jobs.dig(0, 'at') }
+
+    before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3'], loop_interval: 5),
+          TestTask2.new(children: ['TestTask4']),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new
+        ]
+      }
+
+      Timecop.freeze
+    end
+
+    it 'behaves properly' do
+      workflow = TestWorkflow.new(id: 123)
+      SidekiqFlow::Client.start_workflow(workflow)
+
+      allow_any_instance_of(TestTask1).to receive(:perform) { raise SidekiqFlow::RepeatTaskLater.new(delay_time: 15.minutes) }
+      expect{SidekiqFlow::Worker.perform_one}.to change{Sidekiq::Worker.jobs.dig(0, 'at')}.to(first_job_at + 15.minutes.to_i)
+    end
+  end
+
   describe 'task repetition' do
     before do
       allow_any_instance_of(TestTask1).to receive(:perform) { raise SidekiqFlow::RepeatTask }

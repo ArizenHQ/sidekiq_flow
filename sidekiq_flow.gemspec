@@ -36,6 +36,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "sprockets", "~> 3.5"
   spec.add_runtime_dependency "uglifier", "~> 4.1"
   spec.add_runtime_dependency "sass", "~> 3.5"
+  spec.add_runtime_dependency "timecop", "~> 0.9"
 
   spec.add_development_dependency "bundler", "~> 1.16"
   spec.add_development_dependency "rake", "~> 10.0"
