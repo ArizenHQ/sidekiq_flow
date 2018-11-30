@@ -137,7 +137,7 @@ RSpec.describe 'workflow' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
 
-      allow_any_instance_of(TestTask1).to receive(:perform) { raise SidekiqFlow::RepeatTaskLater.new(delay_time: 15.minutes) }
+      allow_any_instance_of(TestTask1).to receive(:perform) { raise SidekiqFlow::TryLater.new(delay_time: 15.minutes) }
       expect{SidekiqFlow::Worker.perform_one}.to change{Sidekiq::Worker.jobs.dig(0, 'at')}.to(first_job_at + 15.minutes.to_i)
     end
   end

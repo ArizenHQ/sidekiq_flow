@@ -5,7 +5,7 @@ module SidekiqFlow
   class SkipTask < Error; end
   class RepeatTask < Error; end
 
-  class RepeatTaskLater < Error
+  class TryLater < Error
     attr_reader :delay_time
 
     def initialize(delay_time: delay_time)
