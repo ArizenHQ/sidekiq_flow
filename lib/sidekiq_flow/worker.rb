@@ -36,6 +36,8 @@ module SidekiqFlow
       TaskLogger.log(task.workflow_id, task.klass, :info, 'task skipped')
     rescue RepeatTask
       Client.enqueue_task(task, (Time.now + task.loop_interval).to_i)
+    rescue TryLater => e
+      Client.enqueue_task(task, (Time.now + e.delay_time).to_i)
     rescue StandardError => e
       task.set_error_msg!(e.to_s)
       if task.no_retries?

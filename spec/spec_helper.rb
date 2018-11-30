@@ -3,6 +3,7 @@ require 'fakeredis'
 require 'sidekiq/testing'
 require 'sidekiq_flow'
 require 'test_workflow'
+require 'timecop'
 
 redis = Redis.new(url: SidekiqFlow.configuration.redis_url)
 
