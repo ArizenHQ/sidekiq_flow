@@ -62,6 +62,10 @@ module SidekiqFlow
         end
       end
 
+      def cancel_workflow(workflow_id)
+        destroy_workflow(workflow_id)
+      end
+
       def destroy_succeeded_workflows
         workflow_keys = find_workflow_keys(succeeded_workflow_key_pattern)
         return if workflow_keys.empty?
