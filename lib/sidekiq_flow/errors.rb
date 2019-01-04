@@ -8,7 +8,7 @@ module SidekiqFlow
   class TryLater < Error
     attr_reader :delay_time
 
-    def initialize(delay_time: delay_time)
+    def initialize(delay_time:)
       @delay_time = delay_time.to_i
     end
   end
