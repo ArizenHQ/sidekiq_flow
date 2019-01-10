@@ -8,7 +8,7 @@ module SidekiqFlow
       klass.constantize.new(attrs.deep_symbolize_keys)
     end
 
-    def initialize(attrs={})
+    def initialize(*args)
       self.class.attribute_names.each do |attr_name|
         class_eval { attr_accessor attr_name }
       end
