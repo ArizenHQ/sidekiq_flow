@@ -139,6 +139,11 @@ There are couple of helpful CLI commands:
 Workflow expose `succeeded?` method which can be implemented to determine whether workflow finished with success (`false` by default)
 
 
+## task `auto_succeed?`
+This method is intended to describe condition when task is already done.
+It's helpful when task finished his job and we retry it. When met task won't be performed.
+
+
 ## Examples
 
 ### Example 1
