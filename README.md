@@ -34,7 +34,7 @@ The above workflow can be started by:
 ```ruby
 SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 123)) # pass identifier
 ```
-By starting the workflow, we understand starting all tasks having no parents (`TestTask1` in this case). There is an exception of this rule, but it will be described later. Executing of the children tasks depends on parent execution result. By default a child is executed, when all of his parents succeeded (other rules will be described later). So in our example workflow `TestTask2` and `TestTask3` are executed just after `TestTask1` success.
+By starting the workflow, we understand starting all tasks having no parents (`TestTask1` in this case). There is an exception of this rule, but it will be described later. Executing of the children tasks depends on parents execution result. By default a child is executed, when all of his parents succeeded (other rules will be described later). So in our example workflow `TestTask2` and `TestTask3` are executed just after `TestTask1` success.
 
 ## Task states
 
@@ -104,6 +104,40 @@ E.g.
 ```ruby
 SidekiqFlow::TryLater.new(delay_time: 15.minutes) # task will be repeated once after 15 minutes
 ```
+
+## Task implementation
+
+As tasks are Sidekiq jobs, all you need to implement is `perform` method. E.g.
+```ruby
+class TestTask < SidekiqFlow::Task
+  def perform
+    # implement me!
+  end
+end
+```
+You have access to all task attributes inside `SidekiqFlow::Task` instance.
+
+
+## Client
+
+There are couple of helpful CLI commands:
+
+* `SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 123))`
+  * starting workflow
+* `SidekiqFlow::Client.start_task(123, 'TestTask')`
+  * starting task
+* `SidekiqFlow::Client.restart_task(123, 'TestTask')`
+  * restarting task
+  * the task and its children are 'cleared' (status is set to 'pending') and the task is started then
+  * 'enqueued' and 'awaiting_retry' can't be restarted as they're in progress
+* `SidekiqFlow::Client.restart_task(123, 'TestTask')`
+* `SidekiqFlow::Client.clear_task(123, 'TestTask')`
+  * set task's status to 'pending'
+
+
+## workflow `succeeded?`
+Workflow expose `succeeded?` method which can be implemented to determine whether workflow finished with success (`false` by default)
+
 
 ## Examples
 
