@@ -27,9 +27,9 @@ module SidekiqFlow
 
       get '/workflows' do
         search = DataTableSearch.new(
-          params['search']['value'],
-          params['order']['0']['column'].to_i,
-          params['order']['0']['dir'],
+          params.dig('search', 'value'),
+          params.dig('order', '0', 'column').to_i,
+          params.dig('order', '0', 'dir'),
           params['start'].to_i,
           params['length'].to_i,
           app_prefix
