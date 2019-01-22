@@ -18,7 +18,7 @@ module SidekiqFlow
     attr_reader :tasks
 
     def initialize(attrs={})
-      super(attrs)
+      super
       @id = attrs.fetch(:id)
       @params = attrs[:params] || {}
       @tasks = attrs[:tasks] || self.class.initial_tasks
