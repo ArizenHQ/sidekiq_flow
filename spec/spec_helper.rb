@@ -5,7 +5,7 @@ require 'sidekiq_flow'
 require 'test_workflow'
 require 'timecop'
 
-redis = Redis.new(url: SidekiqFlow.configuration.redis_url)
+$redis = Redis.new(url: SidekiqFlow.configuration.redis_url)
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -19,7 +19,7 @@ RSpec.configure do |config|
   end
 
   config.before(:each) do
-    redis.flushdb
+    $redis.flushdb
     Sidekiq::Worker.clear_all
   end
 end
