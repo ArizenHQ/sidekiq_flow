@@ -4,6 +4,8 @@ module SidekiqFlow
 
     class << self
       def start_workflow(workflow)
+        return if already_started?(workflow.id)
+
         store_workflow(workflow, true)
         tasks = workflow.find_ready_to_start_tasks
         tasks.each { |task| enqueue_task(task) }
@@ -140,6 +142,20 @@ module SidekiqFlow
 
       def succeeded_workflow_key_pattern
         "#{configuration.namespace}.*_*_[^0]*"
+      end
+
+      def already_started?(workflow_id)
+        key = nil
+
+        connection_pool.with do |redis|
+          key = redis.scan_each(match: already_started_workflow_key_pattern(workflow_id), count: SCAN_COUNT).first
+        end
+
+        key.present?
+      end
+
+      def already_started_workflow_key_pattern(workflow_id)
+        "#{configuration.namespace}.#{workflow_id}_*_0"
       end
     end
   end
