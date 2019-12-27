@@ -131,6 +131,10 @@ module SidekiqFlow
 
       def succeed_workflow(workflow_id)
         current_key = find_workflow_key(workflow_id)
+
+        # NOTE: Race condition. Some other task might have renamed/deleted the key already.
+        return if current_key.blank?
+
         connection_pool.with do |redis|
           redis.rename(current_key, current_key.chop.concat(Time.now.to_i.to_s))
         end

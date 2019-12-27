@@ -61,9 +61,9 @@ RSpec.describe SidekiqFlow::Client do
           described_class.start_workflow(TestWorkflow.new(id: id))
         }
 
-        it 'should have 3 jobs in sidekiq' do
+        it 'should have 1 job in sidekiq' do
           subject
-          expect(Sidekiq::Worker.jobs.count).to eq(3)
+          expect(Sidekiq::Worker.jobs.count).to eq(1)
         end
       end
 
