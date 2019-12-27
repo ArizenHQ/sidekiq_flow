@@ -104,7 +104,17 @@ module SidekiqFlow
     end
 
     def ready_to_start?
-      pending? && !external_trigger? && trigger_rule_instance.met?
+      init_result = pending? && !external_trigger? && trigger_rule_instance.met?
+
+      if start_date.present?
+        if Time.now.to_i >= start_date
+          init_result && true
+        else
+          false
+        end
+      else
+        init_result
+      end
     end
 
     def auto_succeed?
