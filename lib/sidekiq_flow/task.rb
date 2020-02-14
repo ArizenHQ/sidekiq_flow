@@ -51,8 +51,15 @@ module SidekiqFlow
       @status = STATUS_SKIPPED
     end
 
+    # calling clear! prepares this task to be manually restarted
     def clear!
       @status = STATUS_PENDING
+
+      # make the task be a manual one
+      @start_date = nil
+
+      # clear end date (most cases it's already expired)
+      @end_date = nil
     end
 
     def await_retry!

@@ -161,7 +161,19 @@ RSpec.describe SidekiqFlow::Client do
   describe '.clear_task' do
     subject { described_class.clear_task(workflow.id, task_klass) }
 
+    let(:start_date) { Time.now.to_i + 60 }
+    let(:end_date) { Time.now.to_i + 120 }
+
     before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3'], start_date: start_date, end_date: end_date),
+          TestTask2.new(children: ['TestTask4']),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new
+        ]
+      }
+
       described_class.start_workflow(workflow)
     end
 
@@ -174,6 +186,32 @@ RSpec.describe SidekiqFlow::Client do
         }.to change {
           SidekiqFlow::Client.find_task(workflow.id, task_klass).status
         }.from('enqueued').to('pending')
+      end
+
+      context 'task end_date is set' do
+        it 'should make task status be pending' do
+          expect {
+            subject
+          }.to change {
+            SidekiqFlow::Client.find_task(workflow.id, task_klass).status
+          }.from('enqueued').to('pending')
+        end
+
+        it 'should set start_date to nil' do
+          expect {
+            subject
+          }.to change {
+            SidekiqFlow::Client.find_task(workflow.id, task_klass).start_date.nil?
+          }.from(false).to(true)
+        end
+
+        it 'should set end_date to nil' do
+          expect {
+            subject
+          }.to change {
+            SidekiqFlow::Client.find_task(workflow.id, task_klass).end_date.nil?
+          }.from(false).to(true)
+        end
       end
     end
   end
