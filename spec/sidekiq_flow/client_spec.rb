@@ -373,6 +373,16 @@ RSpec.describe SidekiqFlow::Client do
         expect(result.workflow_id).to eq(workflow.id)
       end
     end
+
+    context 'failure' do
+      let(:task_klass) { 'UnknownTask' }
+
+      it 'should return raise error' do
+        task = subject
+        expect { task.status }.to raise_error NoMethodError
+      end
+
+    end
   end
 
   describe '.enqueue_task' do

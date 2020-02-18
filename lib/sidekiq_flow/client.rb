@@ -29,6 +29,7 @@ module SidekiqFlow
       def clear_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
         task.clear!
+        task.clear_dates!
         store_task(task)
       end
 
