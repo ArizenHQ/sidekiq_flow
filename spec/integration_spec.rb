@@ -381,4 +381,43 @@ RSpec.describe 'workflow' do
       expect(SidekiqFlow::Client.find_task(workflow.id, 'TestTask2').queue).to eq('new_queue')
     end
   end
+
+  describe 'task externally triggered raises TriggerTaskManually' do
+    before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2']),
+          TestTask2.new(children: ['TestTask3', 'TestTask4'], start_date: nil),
+          TestTask3.new,
+          TestTask4.new
+        ]
+      }
+    end
+
+    it 'behaves properly' do
+      # first run raises error
+      allow_any_instance_of(TestTask2).to receive(:perform) { raise SidekiqFlow::TriggerTaskManually }
+
+      workflow = TestWorkflow.new(id: 123)
+      SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::Worker.drain
+      workflow = SidekiqFlow::Client.find_workflow(workflow.id)
+      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'pending', 'pending', 'pending'])
+
+      # trigger the manual task
+      SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
+      SidekiqFlow::Worker.drain
+      workflow = SidekiqFlow::Client.find_workflow(workflow.id)
+      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'pending', 'pending', 'pending'])
+
+      # second run is ok
+      allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
+
+      # trigger the manual task
+      SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
+      SidekiqFlow::Worker.drain
+      workflow = SidekiqFlow::Client.find_workflow(workflow.id)
+      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+    end
+  end
 end

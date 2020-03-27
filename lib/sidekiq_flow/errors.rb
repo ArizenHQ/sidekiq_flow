@@ -4,6 +4,7 @@ module SidekiqFlow
   class TaskUnstartable < Error; end
   class SkipTask < Error; end
   class RepeatTask < Error; end
+  class TriggerTaskManually < Error; end
 
   class TryLater < Error
     attr_reader :delay_time
