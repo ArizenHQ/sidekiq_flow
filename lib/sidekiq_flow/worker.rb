@@ -24,13 +24,17 @@ module SidekiqFlow
         perform_task(task)
       end
       Client.store_task(task)
-      enqueue_task_children(task)
+      enqueue_task_children(task) unless task.pending?
     end
 
     private
 
     def perform_task(task)
       task.perform
+    rescue TriggerTaskManually
+      task.clear!
+      task.clear_dates!
+      TaskLogger.log(task.workflow_id, task.klass, :info, 'task set to pending (to be triggered manually)')
     rescue SkipTask
       task.skip!
       TaskLogger.log(task.workflow_id, task.klass, :info, 'task skipped')
