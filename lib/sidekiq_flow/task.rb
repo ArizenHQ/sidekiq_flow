@@ -14,7 +14,7 @@ module SidekiqFlow
       ]
     end
 
-    attr_reader :workflow_id, :workflow_params, :parents
+    attr_reader :workflow, :workflow_id, :workflow_params, :parents
 
     def initialize(attrs={})
       super
@@ -121,14 +121,15 @@ module SidekiqFlow
       false
     end
 
-    def set_workflow_data!(workflow_id, workflow_params)
-      @workflow_id, @workflow_params = workflow_id, workflow_params
+    def set_workflow_data!(workflow, workflow_params)
+      @workflow, @workflow_params = workflow, workflow_params
+      @workflow_id = workflow.id
     end
 
     private
 
     def trigger_rule_instance
-      @trigger_rule_instance ||= TaskTriggerRules::Base.build(trigger_rule[0], trigger_rule[1], workflow_id, parents)
+      @trigger_rule_instance ||= TaskTriggerRules::Base.build(trigger_rule[0], trigger_rule[1], workflow, parents)
     end
   end
 end
