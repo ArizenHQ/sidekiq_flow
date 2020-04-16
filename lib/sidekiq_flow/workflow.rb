@@ -44,7 +44,6 @@ module SidekiqFlow
         task.children.each do |child_klass|
           child_task = find_task(child_klass)
           child_task.parents << task.klass
-          child_task.set_workflow_data!(self, params)
         end
         task.set_workflow_data!(self, params)
       end
