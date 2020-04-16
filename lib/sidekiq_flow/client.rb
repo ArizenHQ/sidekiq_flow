@@ -136,6 +136,8 @@ module SidekiqFlow
         # NOTE: Race condition. Some other task might have renamed/deleted the key already.
         return if current_key.blank?
 
+        return if already_succeeded?(workflow_id, current_key)
+
         connection_pool.with do |redis|
           redis.rename(current_key, current_key.chop.concat(Time.now.to_i.to_s))
         end
@@ -161,6 +163,10 @@ module SidekiqFlow
 
       def already_started_workflow_key_pattern(workflow_id)
         "#{configuration.namespace}.#{workflow_id}_*_0"
+      end
+
+      def already_succeeded?(workflow_id, workflow_key)
+        workflow_key.match(/#{configuration.namespace}\.#{workflow_id}_\d{10}_\d{10}/)
       end
     end
   end
