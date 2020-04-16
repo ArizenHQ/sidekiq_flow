@@ -275,6 +275,25 @@ RSpec.describe SidekiqFlow::Client do
           SidekiqFlow::Client.find_task(workflow.id, task.class.name).status
         }.from('enqueued').to('failed')
       end
+
+      context 'NOT yet succeeded workflow' do
+        it 'should rename workflow key to succeed pattern' do
+          SidekiqFlow::Client.find_workflow_key(workflow.id) =~ /#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d{10}_0/
+          subject
+          SidekiqFlow::Client.find_workflow_key(workflow.id) =~ /#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d{10}_\d{10}/
+        end
+      end
+
+      context 'already succeeded workflow' do
+        it 'should NOT change the workflow key' do
+          subject
+          key = SidekiqFlow::Client.find_workflow_key(workflow.id)
+
+          # call subject to trigger succeed call again, should not change key
+          subject
+          expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to eq key
+        end
+      end
     end
   end
 
