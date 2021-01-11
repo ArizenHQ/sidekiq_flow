@@ -111,7 +111,7 @@ module SidekiqFlow
       end
 
       def connection_pool
-        @connection_pool ||= ConnectionPool.new(size: configuration.concurrency, timeout: 5) do
+        @connection_pool ||= ConnectionPool.new(size: configuration.concurrency, timeout: configuration.timeout) do
           Redis.new(url: configuration.redis_url)
         end
       end
