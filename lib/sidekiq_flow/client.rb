@@ -101,7 +101,7 @@ module SidekiqFlow
       def find_workflow_key(workflow_id)
         key_pattern = "#{configuration.namespace}.#{workflow_id}_*"
 
-        lookup(key_pattern)
+        find_first(key_pattern)
       end
 
       def set_task_queue(workflow_id, task_class, queue)
@@ -154,7 +154,7 @@ module SidekiqFlow
       def already_started?(workflow_id)
         key_pattern = already_started_workflow_key_pattern(workflow_id)
 
-        lookup(key_pattern).present?
+        find_first(key_pattern).present?
       end
 
       def already_started_workflow_key_pattern(workflow_id)
@@ -165,7 +165,7 @@ module SidekiqFlow
         workflow_key.match(/#{configuration.namespace}\.#{workflow_id}_\d{10}_\d{10}/)
       end
 
-      def lookup(key_pattern)
+      def find_first(key_pattern)
         result = nil
 
         connection_pool.with do |redis|
