@@ -99,9 +99,9 @@ module SidekiqFlow
       end
 
       def find_workflow_key(workflow_id)
-        connection_pool.with do |redis|
-          redis.scan_each(match: "#{configuration.namespace}.#{workflow_id}_*", count: SCAN_COUNT).first
-        end
+        key_pattern = "#{configuration.namespace}.#{workflow_id}_*"
+
+        lookup(key_pattern)
       end
 
       def set_task_queue(workflow_id, task_class, queue)
@@ -152,13 +152,9 @@ module SidekiqFlow
       end
 
       def already_started?(workflow_id)
-        key = nil
+        key_pattern = already_started_workflow_key_pattern(workflow_id)
 
-        connection_pool.with do |redis|
-          key = redis.scan_each(match: already_started_workflow_key_pattern(workflow_id), count: SCAN_COUNT).first
-        end
-
-        key.present?
+        lookup(key_pattern).present?
       end
 
       def already_started_workflow_key_pattern(workflow_id)
@@ -168,6 +164,28 @@ module SidekiqFlow
       def already_succeeded?(workflow_id, workflow_key)
         workflow_key.match(/#{configuration.namespace}\.#{workflow_id}_\d{10}_\d{10}/)
       end
+
+      def lookup(key_pattern)
+        result = nil
+
+        connection_pool.with do |redis|
+          cursor = "0"
+          loop do
+            cursor, keys = redis.scan(
+                      cursor,
+                      match: key_pattern,
+                      count: SCAN_COUNT
+                    )
+
+            result = keys.first
+
+            break if (result || cursor == "0")
+          end
+        end
+
+        result
+      end
+
     end
   end
 end
