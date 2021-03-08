@@ -1,8 +1,8 @@
 module SidekiqFlow
   class Client
-    SCAN_COUNT = 2000
-
     class << self
+      attr_writer :adapters
+
       def start_workflow(workflow)
         return if already_started?(workflow.id)
 
@@ -14,12 +14,14 @@ module SidekiqFlow
       def start_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
         raise TaskUnstartable unless task.pending?
+
         enqueue_task(task, Time.now.to_i)
       end
 
       def restart_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
         return if task.enqueued? || task.awaiting_retry?
+
         workflow = find_workflow(workflow_id)
         workflow.clear_branch!(task_class)
         store_workflow(workflow)
@@ -33,57 +35,35 @@ module SidekiqFlow
         store_task(task)
       end
 
-      def store_workflow(workflow, initial=false)
-        workflow_key = initial ? generate_initial_workflow_key(workflow.id) : find_workflow_key(workflow.id)
-        connection_pool.with do |redis|
-          redis.hmset(
-            workflow_key,
-            [:klass, workflow.klass, :attrs, workflow.to_json] + workflow.tasks.map { |t| [t.klass, t.to_json] }.flatten
-          )
-        end
+      def store_workflow(workflow, initial = false)
+        adapters.each { |adapter| adapter.store_workflow(workflow, initial) }
       end
 
       def store_task(task)
-        connection_pool.with do |redis|
-          redis.hset(find_workflow_key(task.workflow_id), task.klass, task.to_json)
-        end
-        return unless workflow_succeeded?(task.workflow_id)
-        succeed_workflow(task.workflow_id)
+        adapters.each { |adapter| adapter.store_task(task) }
       end
 
       def find_workflow(workflow_id)
-        connection_pool.with do |redis|
-          workflow_redis_hash = redis.hgetall(find_workflow_key(workflow_id))
-          raise WorkflowNotFound if workflow_redis_hash.empty?
-          Workflow.from_redis_hash(workflow_redis_hash)
-        end
+        adapters.last.find_workflow(workflow_id)
       end
 
       def destroy_workflow(workflow_id)
-        connection_pool.with do |redis|
-          redis.del(find_workflow_key(workflow_id))
-        end
+        adapters.each { |adapter| adapter.destroy_workflow(workflow_id) }
       end
 
       def destroy_succeeded_workflows
-        workflow_keys = find_workflow_keys(succeeded_workflow_key_pattern)
-        return if workflow_keys.empty?
-        connection_pool.with do |redis|
-          redis.del(*workflow_keys)
-        end
+        adapters.each { |adapter| adapter.destroy_succeeded_workflows }
       end
 
       def find_task(workflow_id, task_class)
         find_workflow(workflow_id).find_task(task_class)
       end
 
-      def find_workflow_keys(pattern=workflow_key_pattern)
-        connection_pool.with do |redis|
-          redis.scan_each(match: pattern, count: SCAN_COUNT).to_a
-        end
+      def find_workflow_keys(pattern = workflow_key_pattern)
+        adapters.last.find_workflow_keys(workflow_key_pattern)
       end
 
-      def enqueue_task(task, at=nil)
+      def enqueue_task(task, at = nil)
         task.enqueue!
         store_task(task)
         Sidekiq::Client.push(
@@ -99,9 +79,7 @@ module SidekiqFlow
       end
 
       def find_workflow_key(workflow_id)
-        key_pattern = "#{configuration.namespace}.#{workflow_id}_*"
-
-        find_first(key_pattern)
+        adapters.last.find_workflow_key(workflow_id)
       end
 
       def set_task_queue(workflow_id, task_class, queue)
@@ -111,81 +89,27 @@ module SidekiqFlow
       end
 
       def connection_pool
-        @connection_pool ||= ConnectionPool.new(size: configuration.concurrency, timeout: configuration.timeout) do
-          Redis.new(url: configuration.redis_url)
-        end
+        adapters.each { |adapter| adapter.connection_pool }
       end
-
-      private
 
       def configuration
         @configuration ||= SidekiqFlow.configuration
       end
 
-      def generate_initial_workflow_key(workflow_id)
-        "#{configuration.namespace}.#{workflow_id}_#{Time.now.to_i}_0"
-      end
+      private
 
-      def workflow_succeeded?(workflow_id)
-        find_workflow(workflow_id).succeeded?
-      end
-
-      def succeed_workflow(workflow_id)
-        current_key = find_workflow_key(workflow_id)
-
-        # NOTE: Race condition. Some other task might have renamed/deleted the key already.
-        return if current_key.blank?
-
-        return if already_succeeded?(workflow_id, current_key)
-
-        connection_pool.with do |redis|
-          redis.rename(current_key, current_key.chop.concat(Time.now.to_i.to_s))
-        end
+      def adapters
+        @adapters ||= [SidekiqFlow::Adapters::SetStorage.new(configuration),
+                       SidekiqFlow::Adapters::LegacyStorage.new(configuration)]
       end
 
       def workflow_key_pattern
         "#{configuration.namespace}.*"
       end
 
-      def succeeded_workflow_key_pattern
-        "#{configuration.namespace}.*_*_[^0]*"
-      end
-
       def already_started?(workflow_id)
-        key_pattern = already_started_workflow_key_pattern(workflow_id)
-
-        find_first(key_pattern).present?
+        adapters.last.already_started?(workflow_id)
       end
-
-      def already_started_workflow_key_pattern(workflow_id)
-        "#{configuration.namespace}.#{workflow_id}_*_0"
-      end
-
-      def already_succeeded?(workflow_id, workflow_key)
-        workflow_key.match(/#{configuration.namespace}\.#{workflow_id}_\d{10}_\d{10}/)
-      end
-
-      def find_first(key_pattern)
-        result = nil
-
-        connection_pool.with do |redis|
-          cursor = "0"
-          loop do
-            cursor, keys = redis.scan(
-                      cursor,
-                      match: key_pattern,
-                      count: SCAN_COUNT
-                    )
-
-            result = keys.first
-
-            break if (result || cursor == "0")
-          end
-        end
-
-        result
-      end
-
     end
   end
 end

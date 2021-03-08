@@ -2,7 +2,7 @@ module SidekiqFlow
   class Workflow < Model
 
     def self.attribute_names
-      [:id, :params]
+      [:id, :params, :start_timestamp, :end_timestamp, :updated_at_timestamp, :current_workflow_set]
     end
 
     def self.from_redis_hash(redis_hash)
@@ -16,6 +16,7 @@ module SidekiqFlow
     end
 
     attr_reader :tasks
+    attr_accessor :start_timestamp, :end_timestamp, :updated_at_timestamp, :current_workflow_set
 
     def initialize(attrs={})
       super
@@ -23,6 +24,10 @@ module SidekiqFlow
       @params = attrs[:params] || {}
       @tasks = attrs[:tasks] || self.class.initial_tasks
       @tasks_per_class = @tasks.map { |t| [t.klass, t] }.to_h
+      @start_timestamp = attrs[:start_timestamp]
+      @end_timestamp = attrs[:end_timestamp]
+      @updated_at_timestamp = attrs[:updated_at_timestamp]
+      @current_workflow_set = attrs[:current_workflow_set]
       update_tasks!
     end
 
