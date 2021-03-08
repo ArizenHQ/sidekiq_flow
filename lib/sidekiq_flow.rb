@@ -22,6 +22,7 @@ require "sidekiq_flow/front/app"
 require "sidekiq_flow/front/serializers/workflow_serializer"
 require "sidekiq_flow/front/searches/data_table_search"
 require "sidekiq_flow/task_logger"
+require "sidekiq_flow/adapters/legacy_storage"
 
 module SidekiqFlow
   def self.configure
