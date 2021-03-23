@@ -1,6 +1,15 @@
 require 'spec_helper'
 
 RSpec.shared_examples '.start_workflow common' do
+  it 'should store the workflow in redis' do
+    expect {
+      subject
+    }.to change { redis.keys.count }.from(0).to(2)
+
+    expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS,
+                           SidekiqFlow::Client.find_workflow_key(workflow.id))).to eq(true)
+  end
+
   it 'should enqueue a job to Sidekiq' do
     expect {
       subject
@@ -14,6 +23,7 @@ RSpec.shared_examples '.start_workflow common' do
 end
 
 RSpec.describe SidekiqFlow::Client do
+  let(:redis) { $redis }
   let(:id) { '123' }
   let(:workflow) { TestWorkflow.new(id: id) }
 
@@ -26,6 +36,8 @@ RSpec.describe SidekiqFlow::Client do
         TestTask4.new
       ]
     }
+
+    SidekiqFlow::Client.adapters = [SidekiqFlow::Adapters::SetStorage.new(SidekiqFlow::Client.configuration)]
   end
 
   describe '.start_workflow' do
@@ -71,6 +83,27 @@ RSpec.describe SidekiqFlow::Client do
           subject
           expect(Sidekiq::Worker.jobs.count).to eq(1)
         end
+      end
+    end
+
+    context 'new attributes' do
+      before do
+        freezed_time = Time.utc(2019, 1, 1, 12, 0, 0)
+        Timecop.freeze(freezed_time)
+      end
+
+      after do
+        Timecop.return
+      end
+
+      it 'should have the correct start_timestamp' do
+        subject
+        expect( workflow.start_timestamp ).to eq(Time.now.to_i)
+      end
+
+      it 'should have the correct updated_at_timestamp' do
+        subject
+        expect( workflow.updated_at_timestamp ).to eq(Time.now.to_i)
       end
     end
   end
@@ -213,18 +246,69 @@ RSpec.describe SidekiqFlow::Client do
     end
   end
 
-  describe '.store_worflow' do
+  describe '.store_workflow' do
     subject { described_class.store_workflow(workflow, initial) }
 
     context 'initial' do
       let(:initial) { true }
 
-      it 'should find the stored workflow' do
+      it 'should store the workflow' do
+        expect {
+          subject
+        }.to change { redis.keys.count }.from(0).to(2)
+        expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS,
+                               SidekiqFlow::Client.find_workflow_key(workflow.id))).to eq(true)
+      end
+    end
+
+    context 'subsequent' do
+      let(:initial) { false }
+
+      before do
+        described_class.start_workflow(workflow)
+      end
+
+      it 'should NOT create a new redis key' do
+        expect {
+          subject
+        }.not_to change { redis.keys.count }
+      end
+
+      it 'should ONLY have 2 redis key' do
+        subject
+        expect(redis.keys.count).to eq(2)
+      end
+
+      it 'should override the existing stored workflow' do
+        hash1 = redis.hgetall(redis.keys.last)
+        workflow.clear_branch!('TestTask1')
+        subject
+        hash2 = redis.hgetall(redis.keys.last)
+
+        expect(hash1).not_to eq(hash2)
+      end
+    end
+
+    context 'new attributes' do
+      let(:initial) { false }
+
+      before do
+        described_class.start_workflow(workflow)
+        freezed_time = Time.utc(2019, 1, 1, 12, 0, 0)
+        Timecop.freeze(freezed_time)
+      end
+
+      after do
+        Timecop.return
+      end
+
+      it 'should have the correct attributes in the Redis hash' do
         subject
 
-        expect {
-          SidekiqFlow::Client.find_workflow(workflow.id)
-        }.not_to raise_error
+        stored_workflow = described_class.find_workflow(workflow.id)
+
+        expect( stored_workflow.updated_at_timestamp ).to eq(Time.now.to_i)
+        expect( stored_workflow.current_workflow_set ).to eq(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS)
       end
     end
   end
@@ -245,6 +329,14 @@ RSpec.describe SidekiqFlow::Client do
         }.to change {
           SidekiqFlow::Client.find_task(workflow.id, task.class.name).status
         }.from('enqueued').to('failed')
+      end
+
+      context 'NOT yet succeeded workflow' do
+        it 'should NOT move workflow key to FINISHED set' do
+          subject
+          expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS,
+                                 SidekiqFlow::Client.find_workflow_key(workflow.id))).to eq(true)
+        end
       end
     end
   end
@@ -275,9 +367,24 @@ RSpec.describe SidekiqFlow::Client do
         }.to raise_exception(SidekiqFlow::WorkflowNotFound)
       end
     end
+
+    context 'new attributes' do
+      before do
+        described_class.start_workflow(workflow)
+      end
+
+      it 'should have the correct attributes in the Redis hash' do
+        result = subject
+
+        expect( result.start_timestamp.to_s ).to match(/\d+/)
+        expect( result.end_timestamp ).to eq(nil)
+        expect( result.updated_at_timestamp.to_s ).to match(/\d+/)
+        expect( result.current_workflow_set ).to eq(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS)
+      end
+    end
   end
 
-  describe '.destroy_worflow' do
+  describe '.destroy_workflow' do
     subject { described_class.destroy_workflow(workflow.id) }
 
     context 'success' do
@@ -285,12 +392,13 @@ RSpec.describe SidekiqFlow::Client do
         described_class.start_workflow(workflow)
       end
 
-      it 'should NOT fidn the deleted workflow' do
-        subject
-
+      it 'should delete the workflow' do
         expect {
-          SidekiqFlow::Client.find_workflow(workflow.id)
-      }.to raise_exception(SidekiqFlow::WorkflowNotFound)
+          subject
+        }.to change { redis.keys.count }.from(2).to(1)
+
+        expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::FINISHED,
+                               SidekiqFlow::Client.find_workflow_key(workflow.id))).to eq(false)
       end
     end
   end
@@ -307,6 +415,34 @@ RSpec.describe SidekiqFlow::Client do
         described_class.start_workflow(workflow2)
       end
 
+      it 'should delete succeeded workflows' do
+        expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::FINISHED,
+                               SidekiqFlow::Client.find_workflow_key(workflow.id))).to eq(true)
+
+        subject
+
+        expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::FINISHED,
+                               SidekiqFlow::Client.find_workflow_key(workflow.id))).to eq(false)
+      end
+
+      it 'should NOT delete in progress workflows' do
+        expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS,
+                               SidekiqFlow::Client.find_workflow_key(workflow2.id))).to eq(true)
+
+        subject
+
+        expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS,
+                               SidekiqFlow::Client.find_workflow_key(workflow2.id))).to eq(true)
+      end
+
+      it 'should change redis key count' do
+        expect {
+          subject
+        }.to change {
+          redis.keys.count
+        }.from(4).to(2)
+      end
+
       it 'should raise error when looking for deleted workflows' do
         subject
 
@@ -321,33 +457,6 @@ RSpec.describe SidekiqFlow::Client do
         expect {
           SidekiqFlow::Client.find_workflow(workflow2.id)
         }.not_to raise_error
-      end
-    end
-  end
-
-  describe '.find_workflow_key' do
-    subject { described_class.find_workflow_key(workflow.id) }
-
-    before do
-      described_class.start_workflow(workflow)
-    end
-
-    context 'success' do
-      it 'should return the correct key' do
-        result = subject
-        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_0/)
-      end
-    end
-
-    # NOTE: existing behavior can return already succeeded workflows
-    context 'failure scenario' do
-      it 'returns the wrong key' do
-        SidekiqFlow::Worker.drain
-
-        described_class.start_workflow(workflow)
-
-        result = subject
-        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_\d{2,}/)
       end
     end
   end
@@ -406,6 +515,32 @@ RSpec.describe SidekiqFlow::Client do
       it 'should set task status to enqueued' do
         subject
         expect(task.status).to eq('enqueued')
+      end
+    end
+  end
+
+  describe '.find_workflow_key' do
+    subject { described_class.find_workflow_key(workflow.id) }
+
+    before do
+      described_class.start_workflow(workflow)
+    end
+
+    context 'success' do
+      it 'should return the correct key' do
+        result = subject
+        expect(result).to eq("#{SidekiqFlow.configuration.namespace}.#{workflow.id}")
+      end
+    end
+
+    context 'failure scenario' do
+      it 'returns the wrong key' do
+        SidekiqFlow::Worker.drain
+
+        described_class.start_workflow(workflow)
+
+        result = subject
+        expect(result).to eq("#{SidekiqFlow.configuration.namespace}.#{workflow.id}")
       end
     end
   end
