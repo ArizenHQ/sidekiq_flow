@@ -29,6 +29,7 @@ module SidekiqFlow
   def self.configure
     yield(configuration)
     configuration.setup_logger
+    configuration.setup_connection_pool
   end
 
   def self.configuration

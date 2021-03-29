@@ -23,6 +23,8 @@ RSpec.shared_examples '.start_workflow common' do
 end
 
 RSpec.describe SidekiqFlow::Client do
+
+
   let(:redis) { $redis }
   let(:id) { '123' }
   let(:workflow) { TestWorkflow.new(id: id) }
@@ -98,12 +100,12 @@ RSpec.describe SidekiqFlow::Client do
 
       it 'should have the correct start_timestamp' do
         subject
-        expect( workflow.start_timestamp ).to eq(Time.now.to_i)
+        expect(workflow.start_timestamp).to eq(Time.now.to_i)
       end
 
       it 'should have the correct updated_at_timestamp' do
         subject
-        expect( workflow.updated_at_timestamp ).to eq(Time.now.to_i)
+        expect(workflow.updated_at_timestamp).to eq(Time.now.to_i)
       end
     end
   end
@@ -307,8 +309,8 @@ RSpec.describe SidekiqFlow::Client do
 
         stored_workflow = described_class.find_workflow(workflow.id)
 
-        expect( stored_workflow.updated_at_timestamp ).to eq(Time.now.to_i)
-        expect( stored_workflow.current_workflow_set ).to eq(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS)
+        expect(stored_workflow.updated_at_timestamp).to eq(Time.now.to_i)
+        expect(stored_workflow.current_workflow_set).to eq(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS)
       end
     end
   end
@@ -376,10 +378,10 @@ RSpec.describe SidekiqFlow::Client do
       it 'should have the correct attributes in the Redis hash' do
         result = subject
 
-        expect( result.start_timestamp.to_s ).to match(/\d+/)
-        expect( result.end_timestamp ).to eq(nil)
-        expect( result.updated_at_timestamp.to_s ).to match(/\d+/)
-        expect( result.current_workflow_set ).to eq(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS)
+        expect(result.start_timestamp.to_s).to match(/\d+/)
+        expect(result.end_timestamp).to eq(nil)
+        expect(result.updated_at_timestamp.to_s).to match(/\d+/)
+        expect(result.current_workflow_set).to eq(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS)
       end
     end
   end
@@ -529,7 +531,7 @@ RSpec.describe SidekiqFlow::Client do
     context 'success' do
       it 'should return the correct key' do
         result = subject
-        expect(result).to eq("#{SidekiqFlow.configuration.namespace}.#{workflow.id}")
+        expect(result).to eq("#{SidekiqFlow.configuration.namespace}.set.#{workflow.id}")
       end
     end
 
@@ -540,7 +542,7 @@ RSpec.describe SidekiqFlow::Client do
         described_class.start_workflow(workflow)
 
         result = subject
-        expect(result).to eq("#{SidekiqFlow.configuration.namespace}.#{workflow.id}")
+        expect(result).to eq("#{SidekiqFlow.configuration.namespace}.set.#{workflow.id}")
       end
     end
   end

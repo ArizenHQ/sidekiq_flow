@@ -1,8 +1,8 @@
 module SidekiqFlow
   module Adapters
     class SetStorage
-      IN_PROGRESS = 'in-progress'.freeze
-      FINISHED = 'finished'.freeze
+      IN_PROGRESS = 'workflows.set.in-progress'.freeze
+      FINISHED = 'workflows.set.finished'.freeze
 
       attr_reader :configuration
 
@@ -52,8 +52,13 @@ module SidekiqFlow
       end
 
       def destroy_workflow(workflow_id)
+        workflow_key = workflow_key(workflow_id)
+
         connection_pool.with do |redis|
-          redis.del(workflow_key(workflow_id))
+          redis.pipelined do
+            redis.del(workflow_key)
+            redis.srem(FINISHED, workflow_key)
+          end
         end
       end
 
@@ -69,13 +74,13 @@ module SidekiqFlow
         connection_pool.with do |redis|
           redis.pipelined do
             redis.del(*workflow_keys)
-            redis.srem(FINISHED, *workflow_keys)
+            redis.srem(FINISHED, workflow_keys)
           end
         end
       end
 
       def workflow_key(workflow_id)
-        "#{configuration.namespace}.#{workflow_id}"
+        "#{configuration.namespace}.set.#{workflow_id}"
       end
 
       alias_method :find_workflow_key, :workflow_key
@@ -89,15 +94,13 @@ module SidekiqFlow
       end
 
       def connection_pool
-        @connection_pool ||= ConnectionPool.new(size: configuration.concurrency, timeout: configuration.timeout) do
-          Redis.new(url: configuration.redis_url)
-        end
+        @connection_pool ||= configuration.connection_pool
       end
 
       private
 
       def generate_initial_workflow_key(workflow_id)
-        "#{configuration.namespace}.#{workflow_id}"
+        "#{configuration.namespace}.set.#{workflow_id}"
       end
 
       def workflow_succeeded?(workflow_id)
