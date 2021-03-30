@@ -21,5 +21,8 @@ RSpec.configure do |config|
   config.before(:each) do
     $redis.flushdb
     Sidekiq::Worker.clear_all
+    SidekiqFlow::Client.adapters = [ SidekiqFlow::Adapters::SetStorage.new(SidekiqFlow::Client.configuration),
+      SidekiqFlow::Adapters::LegacyStorage.new(SidekiqFlow::Client.configuration)]
+    SidekiqFlow.configure { }
   end
 end
