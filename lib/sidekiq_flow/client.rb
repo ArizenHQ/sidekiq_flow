@@ -89,7 +89,7 @@ module SidekiqFlow
       end
 
       def connection_pool
-        adapters.each { |adapter| adapter.connection_pool }
+        adapters.last.connection_pool
       end
 
       def configuration
