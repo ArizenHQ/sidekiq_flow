@@ -1,8 +1,8 @@
 module SidekiqFlow
   module Adapters
     class SetStorage
-      IN_PROGRESS = 'in-progress'.freeze
-      FINISHED = 'finished'.freeze
+      IN_PROGRESS = 'workflows.set.in-progress'.freeze
+      FINISHED = 'workflows.set.finished'.freeze
 
       attr_reader :configuration
 
@@ -80,7 +80,7 @@ module SidekiqFlow
       end
 
       def workflow_key(workflow_id)
-        "#{configuration.namespace}.#{workflow_id}"
+        "#{configuration.namespace}.set.#{workflow_id}"
       end
 
       alias_method :find_workflow_key, :workflow_key
