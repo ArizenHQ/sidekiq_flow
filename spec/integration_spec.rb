@@ -16,6 +16,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
@@ -54,6 +55,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       expect do
         SidekiqFlow::Worker.drain
       end.to raise_error(RuntimeError)
@@ -77,6 +79,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       expect do
         SidekiqFlow::Worker.drain
       end.to raise_error(RuntimeError)
@@ -99,18 +102,21 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
       expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'pending', 'pending'])
 
       expect do
         SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
+        SidekiqFlow::ClientWorker::TaskStarterWorker.drain
       end.to raise_error(SidekiqFlow::TaskUnstartable)
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
       expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'pending', 'pending'])
 
       SidekiqFlow::Client.start_task(workflow.id, 'TestTask3')
+      SidekiqFlow::ClientWorker::TaskStarterWorker.drain
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
       expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
@@ -136,6 +142,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
 
       allow_any_instance_of(TestTask1).to receive(:perform) { raise SidekiqFlow::TryLater.new(delay_time: 15.minutes) }
       expect{SidekiqFlow::Worker.perform_one}.to change{Sidekiq::Worker.jobs.dig(0, 'at')}.to(first_job_at + 15.minutes.to_i)
@@ -158,6 +165,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
@@ -189,6 +197,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       SidekiqFlow::Worker.drain
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['failed', 'pending', 'pending', 'pending'])
       expect(SidekiqFlow::Client.find_task(workflow.id, 'TestTask1').error_msg).to eq('expired')
@@ -213,18 +222,21 @@ RSpec.describe 'workflow' do
         allow_any_instance_of(TestTask3).to receive(:perform) { raise SidekiqFlow::SkipTask }
         workflow = TestWorkflow.new(id: 1)
         SidekiqFlow::Client.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'skipped', 'pending'])
 
         allow_any_instance_of(TestTask3).to receive(:perform)
         workflow = TestWorkflow.new(id: 2)
         SidekiqFlow::Client.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'succeeded', 'pending'])
 
         allow_any_instance_of(TestTask2).to receive(:perform)
         workflow = TestWorkflow.new(id: 3)
         SidekiqFlow::Client.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
       end
@@ -247,18 +259,21 @@ RSpec.describe 'workflow' do
         allow_any_instance_of(TestTask3).to receive(:perform) { raise SidekiqFlow::SkipTask }
         workflow = TestWorkflow.new(id: 1)
         SidekiqFlow::Client.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'skipped', 'pending'])
 
         allow_any_instance_of(TestTask3).to receive(:perform)
         workflow = TestWorkflow.new(id: 2)
         SidekiqFlow::Client.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped', 'succeeded', 'succeeded'])
 
         allow_any_instance_of(TestTask2).to receive(:perform)
         workflow = TestWorkflow.new(id: 3)
         SidekiqFlow::Client.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         SidekiqFlow::Worker.drain
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
       end
@@ -280,11 +295,13 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
       expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
 
       SidekiqFlow::Client.restart_task(workflow.id, 'TestTask1')
+      SidekiqFlow::ClientWorker::TaskStarterWorker.drain
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending', 'pending', 'pending'])
     end
   end
@@ -304,9 +321,11 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 1))
       SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 2))
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       SidekiqFlow::Worker.drain
       SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 3))
       SidekiqFlow::Client.start_workflow(TestWorkflow.new(id: 4))
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
 
       SidekiqFlow::Client.destroy_workflow(4)
       expect(SidekiqFlow::Client.find_workflow_keys.map { |k| k.split('.').last.split('_').first.to_i }).to match_array([1, 2, 3])
@@ -344,6 +363,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       SidekiqFlow::Worker.drain
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
     end
@@ -375,6 +395,7 @@ RSpec.describe 'workflow' do
     it 'behaves properly' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       expect(SidekiqFlow::Client.find_task(workflow.id, 'TestTask2').queue).to eq('initial_queue')
 
       SidekiqFlow::Worker.perform_one
@@ -400,12 +421,14 @@ RSpec.describe 'workflow' do
 
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
       expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'pending', 'pending', 'pending'])
 
       # trigger the manual task
       SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
+      SidekiqFlow::ClientWorker::TaskStarterWorker.drain
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
       expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'pending', 'pending', 'pending'])
@@ -415,6 +438,7 @@ RSpec.describe 'workflow' do
 
       # trigger the manual task
       SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
+      SidekiqFlow::ClientWorker::TaskStarterWorker.drain
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
       expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
