@@ -23,8 +23,6 @@ RSpec.shared_examples '.start_workflow common' do
 end
 
 RSpec.describe SidekiqFlow::Client do
-
-
   let(:redis) { $redis }
   let(:id) { '123' }
   let(:workflow) { TestWorkflow.new(id: id) }
@@ -43,10 +41,10 @@ RSpec.describe SidekiqFlow::Client do
   end
 
   describe '.start_workflow' do
-    subject { 
+    subject {
       described_class.start_workflow(workflow)
       SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
-     }
+    }
 
     context 'alphanumeric id' do
       let(:id) { 'cs-123' }
@@ -109,7 +107,7 @@ RSpec.describe SidekiqFlow::Client do
 
       it 'should have the correct start_timestamp' do
         subject
-        #Need to retrieve the workflow from Redis because the one started is a new instance
+        # Need to retrieve the workflow from Redis because the one started is a new instance
         started_workflow = described_class.find_workflow(workflow.id)
         expect(started_workflow.start_timestamp).to eq(Time.now.to_i)
       end
@@ -129,10 +127,10 @@ RSpec.describe SidekiqFlow::Client do
   end
 
   describe '.start_task' do
-    subject { 
+    subject {
       described_class.start_task(workflow.id, task_klass)
       SidekiqFlow::ClientWorker::TaskStarterWorker.drain
-     }
+    }
 
     before do
       described_class.start_workflow(workflow)

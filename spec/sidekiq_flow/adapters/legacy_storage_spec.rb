@@ -38,10 +38,10 @@ RSpec.describe SidekiqFlow::Client do
   end
 
   describe '.start_workflow' do
-    subject { 
+    subject {
       described_class.start_workflow(workflow)
       SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
-     }
+    }
 
     context 'alphanumeric id' do
       let(:id) { 'cs-123' }
@@ -94,10 +94,10 @@ RSpec.describe SidekiqFlow::Client do
   end
 
   describe '.start_task' do
-    subject { 
+    subject {
       described_class.start_task(workflow.id, task_klass)
       SidekiqFlow::ClientWorker::TaskStarterWorker.drain
-     }
+    }
 
     before do
       described_class.start_workflow(workflow)

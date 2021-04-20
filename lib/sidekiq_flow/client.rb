@@ -3,14 +3,15 @@ module SidekiqFlow
     class << self
       attr_writer :adapters
 
-      def start_workflow(workflow, async: true)
+      def start_workflow(workflow, async: false)
         return if already_started?(workflow.id)
 
         if async
           Sidekiq::Client.push(
             {
               'class' => ClientWorker::WorkflowStarterWorker,
-              'args' => [workflow.class, workflow.id]
+              'args' => [workflow.id, workflow.klass],
+              'queue' => SidekiqFlow.configuration.queue
             }
           )
         else
@@ -20,12 +21,13 @@ module SidekiqFlow
         end
       end
 
-      def start_task(workflow_id, task_class, async: true)
+      def start_task(workflow_id, task_class, async: false)
         if async
           Sidekiq::Client.push(
             {
               'class' => ClientWorker::TaskStarterWorker,
-              'args' => [workflow_id, task_class]
+              'args' => [workflow_id, task_class],
+              'queue' => SidekiqFlow.configuration.queue
             }
           )
         else

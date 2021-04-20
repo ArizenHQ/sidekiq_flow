@@ -29,7 +29,7 @@ RSpec.describe SidekiqFlow::Client do
   end
 
   describe '.start_workflow' do
-    subject { 
+    subject {
       described_class.start_workflow(workflow)
       SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     }
@@ -88,7 +88,7 @@ RSpec.describe SidekiqFlow::Client do
   end
 
   describe '.start_task' do
-    subject { 
+    subject {
       described_class.start_task(workflow.id, task_klass)
       SidekiqFlow::ClientWorker::TaskStarterWorker.drain
     }
@@ -311,7 +311,7 @@ RSpec.describe SidekiqFlow::Client do
 
         expect {
           SidekiqFlow::Client.find_workflow(workflow.id)
-      }.to raise_exception(SidekiqFlow::WorkflowNotFound)
+        }.to raise_exception(SidekiqFlow::WorkflowNotFound)
       end
     end
   end
