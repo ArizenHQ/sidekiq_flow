@@ -22,6 +22,9 @@ module SidekiqFlow
       end
 
       def start_task(workflow_id, task_class, async: false)
+        task = find_task(workflow_id, task_class)
+        raise TaskUnstartable unless task.pending?
+
         if async
           Sidekiq::Client.push(
             {
@@ -31,9 +34,6 @@ module SidekiqFlow
             }
           )
         else
-          task = find_task(workflow_id, task_class)
-          raise TaskUnstartable unless task.pending?
-
           enqueue_task(task, Time.now.to_i)
         end
       end
