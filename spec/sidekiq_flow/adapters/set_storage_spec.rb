@@ -43,7 +43,10 @@ RSpec.describe SidekiqFlow::Client do
   end
 
   describe '.start_workflow' do
-    subject { described_class.start_workflow(workflow) }
+    subject { 
+      described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
+     }
 
     context 'alphanumeric id' do
       let(:id) { 'cs-123' }
@@ -64,8 +67,11 @@ RSpec.describe SidekiqFlow::Client do
       context 'different instances created' do
         subject {
           described_class.start_workflow(TestWorkflow.new(id: id))
+          SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
           described_class.start_workflow(TestWorkflow.new(id: id))
+          SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
           described_class.start_workflow(TestWorkflow.new(id: id))
+          SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         }
 
         it 'should have 1 job in sidekiq' do
@@ -77,8 +83,11 @@ RSpec.describe SidekiqFlow::Client do
       context 'same instance used' do
         subject {
           described_class.start_workflow(workflow)
+          SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
           described_class.start_workflow(workflow)
+          SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
           described_class.start_workflow(workflow)
+          SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         }
 
         it 'should have 1 job in sidekiq' do
@@ -100,21 +109,34 @@ RSpec.describe SidekiqFlow::Client do
 
       it 'should have the correct start_timestamp' do
         subject
-        expect(workflow.start_timestamp).to eq(Time.now.to_i)
+        #Need to retrieve the workflow from Redis because the one started is a new instance
+        started_workflow = described_class.find_workflow(workflow.id)
+        expect(started_workflow.start_timestamp).to eq(Time.now.to_i)
       end
 
       it 'should have the correct updated_at_timestamp' do
         subject
-        expect(workflow.updated_at_timestamp).to eq(Time.now.to_i)
+        started_workflow = described_class.find_workflow(workflow.id)
+        expect(started_workflow.updated_at_timestamp).to eq(Time.now.to_i)
+      end
+
+      it 'should have the correct current_workflow_set' do
+        subject
+        started_workflow = described_class.find_workflow(workflow.id)
+        expect(started_workflow.current_workflow_set).to eq(SidekiqFlow::Adapters::SetStorage::IN_PROGRESS)
       end
     end
   end
 
   describe '.start_task' do
-    subject { described_class.start_task(workflow.id, task_klass) }
+    subject { 
+      described_class.start_task(workflow.id, task_klass)
+      SidekiqFlow::ClientWorker::TaskStarterWorker.drain
+     }
 
     before do
       described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     end
 
     context 'success' do
@@ -153,6 +175,7 @@ RSpec.describe SidekiqFlow::Client do
 
     before do
       described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     end
 
     context 'success' do
@@ -207,6 +230,7 @@ RSpec.describe SidekiqFlow::Client do
       }
 
       described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     end
 
     context 'success' do
@@ -268,6 +292,7 @@ RSpec.describe SidekiqFlow::Client do
 
       before do
         described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       it 'should NOT create a new redis key' do
@@ -295,9 +320,10 @@ RSpec.describe SidekiqFlow::Client do
       let(:initial) { false }
 
       before do
-        described_class.start_workflow(workflow)
         freezed_time = Time.utc(2019, 1, 1, 12, 0, 0)
         Timecop.freeze(freezed_time)
+        described_class.start_workflow(workflow, async: false)
+        #SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       after do
@@ -322,6 +348,7 @@ RSpec.describe SidekiqFlow::Client do
 
       before do
         described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       it 'should store task info in redis' do
@@ -349,6 +376,7 @@ RSpec.describe SidekiqFlow::Client do
     context 'success' do
       before do
         described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       it 'should return a Workflow instance' do
@@ -373,6 +401,7 @@ RSpec.describe SidekiqFlow::Client do
     context 'new attributes' do
       before do
         described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       it 'should have the correct attributes in the Redis hash' do
@@ -392,6 +421,7 @@ RSpec.describe SidekiqFlow::Client do
     context 'success' do
       before do
         described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       it 'should delete the workflow' do
@@ -413,8 +443,10 @@ RSpec.describe SidekiqFlow::Client do
     context 'success' do
       before do
         described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
         SidekiqFlow::Worker.drain
         described_class.start_workflow(workflow2)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       it 'should delete succeeded workflows' do
@@ -468,6 +500,7 @@ RSpec.describe SidekiqFlow::Client do
 
     before do
       described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     end
 
     context 'success' do
@@ -500,6 +533,7 @@ RSpec.describe SidekiqFlow::Client do
 
     before do
       described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     end
 
     context 'success' do
@@ -526,6 +560,7 @@ RSpec.describe SidekiqFlow::Client do
 
     before do
       described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     end
 
     context 'success' do
@@ -540,6 +575,7 @@ RSpec.describe SidekiqFlow::Client do
         SidekiqFlow::Worker.drain
 
         described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
 
         result = subject
         expect(result).to eq("#{SidekiqFlow.configuration.namespace}.set.#{workflow.id}")
@@ -553,6 +589,7 @@ RSpec.describe SidekiqFlow::Client do
 
     before do
       described_class.start_workflow(workflow)
+      SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
     end
 
     context 'success' do

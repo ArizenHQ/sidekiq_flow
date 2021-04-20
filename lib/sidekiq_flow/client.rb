@@ -3,19 +3,37 @@ module SidekiqFlow
     class << self
       attr_writer :adapters
 
-      def start_workflow(workflow)
+      def start_workflow(workflow, async: true)
         return if already_started?(workflow.id)
 
-        store_workflow(workflow, true)
-        tasks = workflow.find_ready_to_start_tasks
-        tasks.each { |task| enqueue_task(task) }
+        if async
+          Sidekiq::Client.push(
+            {
+              'class' => ClientWorker::WorkflowStarterWorker,
+              'args' => [workflow.class, workflow.id]
+            }
+          )
+        else
+          store_workflow(workflow, true)
+          tasks = workflow.find_ready_to_start_tasks
+          tasks.each { |task| enqueue_task(task) }
+        end
       end
 
-      def start_task(workflow_id, task_class)
-        task = find_task(workflow_id, task_class)
-        raise TaskUnstartable unless task.pending?
+      def start_task(workflow_id, task_class, async: true)
+        if async
+          Sidekiq::Client.push(
+            {
+              'class' => ClientWorker::TaskStarterWorker,
+              'args' => [workflow_id, task_class]
+            }
+          )
+        else
+          task = find_task(workflow_id, task_class)
+          raise TaskUnstartable unless task.pending?
 
-        enqueue_task(task, Time.now.to_i)
+          enqueue_task(task, Time.now.to_i)
+        end
       end
 
       def restart_task(workflow_id, task_class)
