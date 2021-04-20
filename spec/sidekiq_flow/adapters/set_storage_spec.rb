@@ -322,8 +322,8 @@ RSpec.describe SidekiqFlow::Client do
       before do
         freezed_time = Time.utc(2019, 1, 1, 12, 0, 0)
         Timecop.freeze(freezed_time)
-        described_class.start_workflow(workflow, async: false)
-        #SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
+        described_class.start_workflow(workflow)
+        SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
       end
 
       after do
@@ -331,7 +331,9 @@ RSpec.describe SidekiqFlow::Client do
       end
 
       it 'should have the correct attributes in the Redis hash' do
-        subject
+        started_workflow = described_class.find_workflow(workflow.id)
+
+        described_class.store_workflow(started_workflow, initial)
 
         stored_workflow = described_class.find_workflow(workflow.id)
 
