@@ -51,6 +51,14 @@ module SidekiqFlow
         end
       end
 
+      def find_workflow_keys
+        workflow_keys = []
+        connection_pool.with do |redis|
+          workflow_keys += redis.smembers(IN_PROGRESS)
+          workflow_keys += redis.smembers(FINISHED)
+        end
+      end
+
       def destroy_workflow(workflow_id)
         workflow_key = workflow_key(workflow_id)
 
@@ -58,6 +66,7 @@ module SidekiqFlow
           redis.pipelined do
             redis.del(workflow_key)
             redis.srem(FINISHED, workflow_key)
+            redis.srem(IN_PROGRESS, workflow_key)
           end
         end
       end

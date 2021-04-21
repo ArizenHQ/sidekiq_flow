@@ -48,12 +48,13 @@ module SidekiqFlow
 
       def get_input_data
         SidekiqFlow::Client.find_workflow_keys.map do |key|
-          m = key.match(/^#{SidekiqFlow.configuration.namespace}.([^_]+)_(\d+)_(\d+)$/)
+          m = key.match(/^#{SidekiqFlow.configuration.namespace}.set.([^_]+)$/)
 
           if m
             workflow_id           = m[1]
-            workflow_started_at   = m[2].to_i
-            workflow_succeeded_at = m[3].to_i
+            workflow = SidekiqFlow::Client.find_workflow(workflow_id)
+            workflow_started_at   = workflow.start_timestamp
+            workflow_succeeded_at = workflow.end_timestamp
 
             [
               workflow_id,

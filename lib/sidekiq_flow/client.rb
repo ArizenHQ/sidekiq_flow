@@ -79,8 +79,8 @@ module SidekiqFlow
         find_workflow(workflow_id).find_task(task_class)
       end
 
-      def find_workflow_keys(pattern = legacy_workflow_key_pattern)
-        adapters.last.find_workflow_keys(legacy_workflow_key_pattern)
+      def find_workflow_keys
+        adapters.last.find_workflow_keys
       end
 
       def enqueue_task(task, at = nil)
@@ -119,12 +119,7 @@ module SidekiqFlow
       private
 
       def adapters
-        @adapters ||= [SidekiqFlow::Adapters::SetStorage.new(configuration),
-                       SidekiqFlow::Adapters::LegacyStorage.new(configuration)]
-      end
-
-      def legacy_workflow_key_pattern
-        "#{configuration.namespace}.*_*_*"
+        @adapters ||= [SidekiqFlow::Adapters::SetStorage.new(configuration)]
       end
 
       def already_started?(workflow_id)
