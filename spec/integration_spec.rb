@@ -17,23 +17,23 @@ RSpec.describe 'workflow' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
-      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued', 'enqueued', 'pending'])
-      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'enqueued', 'pending'])
-      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'enqueued'])
-      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123/)
 
       SidekiqFlow::Worker.perform_one
       expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
-      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_\d{2,}$/)
+      expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123/)
 
       expect(SidekiqFlow::Worker.jobs).to be_empty
     end

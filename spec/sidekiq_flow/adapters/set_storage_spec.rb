@@ -427,7 +427,7 @@ RSpec.describe SidekiqFlow::Client do
       it 'should delete the workflow' do
         expect {
           subject
-        }.to change { redis.keys.count }.from(2).to(1)
+        }.to change { redis.keys.count }.from(2).to(0)
 
         expect(redis.sismember(SidekiqFlow::Adapters::SetStorage::FINISHED,
                                SidekiqFlow::Client.find_workflow_key(workflow.id))).to eq(false)

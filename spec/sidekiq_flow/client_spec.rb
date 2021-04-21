@@ -359,7 +359,7 @@ RSpec.describe SidekiqFlow::Client do
     context 'success' do
       it 'should return the correct key' do
         result = subject
-        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_0/)
+        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.set\.#{workflow.id}/)
       end
     end
 
@@ -372,7 +372,7 @@ RSpec.describe SidekiqFlow::Client do
         SidekiqFlow::ClientWorker::WorkflowStarterWorker.drain
 
         result = subject
-        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_\d{2,}/)
+        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.set\.#{workflow.id}/)
       end
     end
   end
