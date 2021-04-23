@@ -22,11 +22,16 @@ require "sidekiq_flow/front/app"
 require "sidekiq_flow/front/serializers/workflow_serializer"
 require "sidekiq_flow/front/searches/data_table_search"
 require "sidekiq_flow/task_logger"
+require "sidekiq_flow/adapters/legacy_storage"
+require "sidekiq_flow/adapters/set_storage"
+require "sidekiq_flow/client_workers/start_task_worker"
+require "sidekiq_flow/client_workers/start_workflow_worker"
 
 module SidekiqFlow
   def self.configure
     yield(configuration)
     configuration.setup_logger
+    configuration.setup_connection_pool
   end
 
   def self.configuration
