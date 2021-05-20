@@ -166,7 +166,7 @@ module SidekiqFlow
 
       def already_started?(workflow_id)
         workflow_key = build_workflow_key_from_timestamps(workflow_id)
-        return workflow_key if workflow_key
+        return true if workflow_key
 
         # N+1 scan legacy behaviour
         key_pattern = already_started_workflow_key_pattern(workflow_id)
@@ -238,6 +238,8 @@ module SidekiqFlow
 
       def workflow_key_exists?(workflow_key)
         connection_pool.with do |redis|
+          # NOTE: Redis ~>4.2.5 modified exists to be a variadic function
+          #       and returns integers.
           redis.exists(workflow_key)
         end
       end
