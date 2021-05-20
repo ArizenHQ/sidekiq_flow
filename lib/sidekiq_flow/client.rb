@@ -229,7 +229,7 @@ module SidekiqFlow
                          "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_0"
                        end
         # sanity check find in case workflow key was already deleted
-        if workflow_key_exists?(workflow_key)
+        if workflow_key && workflow_key_exists?(workflow_key)
           workflow_key
         else
           nil
