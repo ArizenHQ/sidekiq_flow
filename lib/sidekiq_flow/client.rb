@@ -99,6 +99,10 @@ module SidekiqFlow
       end
 
       def find_workflow_key(workflow_id)
+        workflow_key = build_workflow_key_from_timestamps(workflow_id)
+        return workflow_key if workflow_key
+
+        # N+1 scan legacy behaviour
         key_pattern = "#{configuration.namespace}.#{workflow_id}_*"
 
         find_first(key_pattern)
@@ -123,7 +127,11 @@ module SidekiqFlow
       end
 
       def generate_initial_workflow_key(workflow_id)
-        "#{configuration.namespace}.#{workflow_id}_#{Time.now.to_i}_0"
+        timestamp = Time.now.to_i
+
+        store_start_timestamp(workflow_id, timestamp)
+
+        "#{configuration.namespace}.#{workflow_id}_#{timestamp}_0"
       end
 
       def workflow_succeeded?(workflow_id)
@@ -138,8 +146,13 @@ module SidekiqFlow
 
         return if already_succeeded?(workflow_id, current_key)
 
+        timestamp = Time.now.to_i
+
         connection_pool.with do |redis|
-          redis.rename(current_key, current_key.chop.concat(Time.now.to_i.to_s))
+          redis.pipelined do
+            redis.set("#{timestamp_namespace}.#{workflow_id}.end", timestamp)
+            redis.rename(current_key, current_key.chop.concat(timestamp.to_s))
+          end
         end
       end
 
@@ -152,6 +165,10 @@ module SidekiqFlow
       end
 
       def already_started?(workflow_id)
+        workflow_key = build_workflow_key_from_timestamps(workflow_id)
+        return workflow_key if workflow_key
+
+        # N+1 scan legacy behaviour
         key_pattern = already_started_workflow_key_pattern(workflow_id)
 
         find_first(key_pattern).present?
@@ -186,6 +203,44 @@ module SidekiqFlow
         result
       end
 
+      # Optimization to avoid N+1 Redis scans
+
+      def timestamp_namespace
+        "workflow-timestamps"
+      end
+
+      def store_start_timestamp(workflow_id, timestamp)
+        connection_pool.with do |redis|
+          redis.set("#{timestamp_namespace}.#{workflow_id}.start", timestamp)
+        end
+      end
+
+      def build_workflow_key_from_timestamps(workflow_id)
+        start_timestamp, end_timestamp = connection_pool.with do |redis|
+          redis.pipelined do
+            redis.get("#{timestamp_namespace}.#{workflow_id}.start")
+            redis.get("#{timestamp_namespace}.#{workflow_id}.end")
+          end
+        end
+
+        workflow_key = if end_timestamp && start_timestamp
+                         "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_#{end_timestamp}"
+                       elsif start_timestamp
+                         "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_0"
+                       end
+        # sanity check find in case workflow key was already deleted
+        if workflow_key_exists?(workflow_key)
+          workflow_key
+        else
+          nil
+        end
+      end
+
+      def workflow_key_exists?(workflow_key)
+        connection_pool.with do |redis|
+          redis.exists(workflow_key)
+        end
+      end
     end
   end
 end

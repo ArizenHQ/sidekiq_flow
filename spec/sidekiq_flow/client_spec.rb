@@ -1,10 +1,14 @@
 require 'spec_helper'
 
+def redis_key_count
+  $redis.keys("workflows.*").count
+end
+
 RSpec.shared_examples '.start_workflow common' do
   it 'should store the workflow in redis' do
     expect {
       subject
-    }.to change { $redis.keys.count }.from(0).to(1)
+    }.to change { redis_key_count }.from(0).to(1)
   end
 
   it 'should enqueue a job to Sidekiq' do
@@ -225,7 +229,7 @@ RSpec.describe SidekiqFlow::Client do
       it 'should store the workflow' do
         expect {
           subject
-        }.to change { redis.keys.count }.from(0).to(1)
+        }.to change { redis_key_count }.from(0).to(1)
       end
     end
 
@@ -239,19 +243,19 @@ RSpec.describe SidekiqFlow::Client do
       it 'should NOT create a new redis key' do
         expect {
           subject
-        }.not_to change { redis.keys.count }
+        }.not_to change { redis_key_count }
       end
 
       it 'should ONLY have 1 redis key' do
         subject
-        expect(redis.keys.count).to eq(1)
+        expect(redis_key_count).to eq(1)
       end
 
       it 'should override the existing stored workflow' do
-        hash1 = redis.hgetall(redis.keys.first)
+        hash1 = redis.hgetall(redis.keys.last)
         workflow.clear_branch!('TestTask1')
         subject
-        hash2 = redis.hgetall(redis.keys.first)
+        hash2 = redis.hgetall(redis.keys.last)
 
         expect(hash1).not_to eq(hash2)
       end
@@ -336,7 +340,7 @@ RSpec.describe SidekiqFlow::Client do
       it 'should delete the workflow' do
         expect {
           subject
-        }.to change { redis.keys.count }.from(1).to(0)
+        }.to change { redis_key_count }.from(1).to(0)
       end
     end
   end
@@ -355,11 +359,11 @@ RSpec.describe SidekiqFlow::Client do
       it 'should ONLY delete succeeded workflows' do
         described_class.start_workflow(workflow2)
 
-        expect(redis.keys.count).to eq(2)
+        expect(redis_key_count).to eq(2)
 
         subject
 
-        expect(redis.keys.count).to eq(1)
+        expect(redis_key_count).to eq(1)
 
         expect {
           SidekiqFlow::Client.find_workflow(workflow.id)
@@ -435,9 +439,22 @@ RSpec.describe SidekiqFlow::Client do
     end
 
     context 'success' do
-      it 'should return the correct key' do
-        result = subject
-        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_0/)
+      context 'in-progress' do
+        it 'should return the correct key' do
+          result = subject
+          expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_0/)
+        end
+      end
+
+      context 'completed' do
+        before do
+          described_class.send(:succeed_workflow, workflow.id)
+        end
+
+        it 'should return the correct key' do
+          result = subject
+          expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d{10}_\d{10}/)
+        end
       end
     end
 
