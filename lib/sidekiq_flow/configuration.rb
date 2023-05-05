@@ -6,7 +6,8 @@ module SidekiqFlow
                   :queue,
                   :retries,
                   :logger,
-                  :timeout
+                  :timeout,
+                  :redis
 
     def initialize
       @redis_url = 'redis://localhost:6379'
