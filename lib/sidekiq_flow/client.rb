@@ -243,8 +243,6 @@ module SidekiqFlow
 
       def workflow_key_exists?(workflow_key)
         connection_pool.with do |redis|
-          # NOTE: Redis ~>4.2.5 modified exists to be a variadic function
-          #       and returns integers, so we use exists?.
           redis.exists?(workflow_key)
         end
       end
