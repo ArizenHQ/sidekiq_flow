@@ -141,7 +141,6 @@ RSpec.describe SidekiqFlow::Client do
       end
     end
 
-
     context 'failure' do
       let(:task_klass) { 'TestTask1' }
 
@@ -404,7 +403,6 @@ RSpec.describe SidekiqFlow::Client do
         task = subject
         expect { task.status }.to raise_error NoMethodError
       end
-
     end
   end
 
@@ -429,7 +427,6 @@ RSpec.describe SidekiqFlow::Client do
       end
     end
   end
-
 
   describe '.find_workflow_key' do
     subject { described_class.find_workflow_key(workflow.id) }

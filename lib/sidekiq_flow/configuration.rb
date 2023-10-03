@@ -20,7 +20,7 @@ module SidekiqFlow
     end
 
     def setup_logger
-      logger.formatter = -> (severity, datetime, progname, msg) { "[%s][%s] %s\n" % [datetime, severity, msg] }
+      logger.formatter = ->(severity, datetime, progname, msg) { "[%s][%s] %s\n" % [datetime, severity, msg] }
     end
   end
 end
