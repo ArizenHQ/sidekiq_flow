@@ -1,6 +1,5 @@
 module SidekiqFlow
   class Workflow < Model
-
     def self.attribute_names
       [:id, :params]
     end
@@ -17,7 +16,7 @@ module SidekiqFlow
 
     attr_reader :tasks
 
-    def initialize(attrs={})
+    def initialize(attrs = {})
       super
       @id = attrs.fetch(:id)
       @params = attrs[:params] || {}

@@ -22,6 +22,7 @@ module SidekiqFlow
 
       def formatted_date(timestamp)
         return if timestamp.nil?
+
         Time.at(timestamp)
       end
     end

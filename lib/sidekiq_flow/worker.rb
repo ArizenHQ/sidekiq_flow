@@ -13,6 +13,7 @@ module SidekiqFlow
       TaskLogger.log(workflow_id, task_class, :info, 'task started')
       task = Client.find_task(workflow_id, task_class)
       return if !task.enqueued? && !task.awaiting_retry?
+
       if task.auto_succeed?
         task.succeed!
         TaskLogger.log(workflow_id, task_class, :info, 'task succeeded')
@@ -62,6 +63,7 @@ module SidekiqFlow
       task.children.each do |child_class|
         child_task = Client.find_task(task.workflow_id, child_class)
         next unless child_task.ready_to_start?
+
         Client.enqueue_task(child_task)
       end
     end

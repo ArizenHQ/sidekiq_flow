@@ -16,7 +16,7 @@ module SidekiqFlow
 
     attr_reader :workflow, :workflow_id, :workflow_params, :parents
 
-    def initialize(attrs={})
+    def initialize(attrs = {})
       super
       @start_date = attrs.fetch(:start_date, Time.now.to_i)
       @end_date = attrs[:end_date]

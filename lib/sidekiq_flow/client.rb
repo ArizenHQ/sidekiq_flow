@@ -14,12 +14,14 @@ module SidekiqFlow
       def start_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
         raise TaskUnstartable unless task.pending?
+
         enqueue_task(task, Time.now.to_i)
       end
 
       def restart_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
         return if task.enqueued? || task.awaiting_retry?
+
         workflow = find_workflow(workflow_id)
         workflow.clear_branch!(task_class)
         store_workflow(workflow)
@@ -33,7 +35,7 @@ module SidekiqFlow
         store_task(task)
       end
 
-      def store_workflow(workflow, initial=false)
+      def store_workflow(workflow, initial = false)
         workflow_key = initial ? generate_initial_workflow_key(workflow.id) : find_workflow_key(workflow.id)
         connection_pool.with do |redis|
           redis.hmset(
@@ -48,6 +50,7 @@ module SidekiqFlow
           redis.hset(find_workflow_key(task.workflow_id), task.klass, task.to_json)
         end
         return unless workflow_succeeded?(task.workflow_id)
+
         succeed_workflow(task.workflow_id)
       end
 
@@ -55,6 +58,7 @@ module SidekiqFlow
         connection_pool.with do |redis|
           workflow_redis_hash = redis.hgetall(find_workflow_key(workflow_id))
           raise WorkflowNotFound if workflow_redis_hash.empty?
+
           Workflow.from_redis_hash(workflow_redis_hash)
         end
       end
@@ -68,6 +72,7 @@ module SidekiqFlow
       def destroy_succeeded_workflows
         workflow_keys = find_workflow_keys(succeeded_workflow_key_pattern)
         return if workflow_keys.empty?
+
         connection_pool.with do |redis|
           redis.del(*workflow_keys)
         end
@@ -77,13 +82,13 @@ module SidekiqFlow
         find_workflow(workflow_id).find_task(task_class)
       end
 
-      def find_workflow_keys(pattern=workflow_key_pattern)
+      def find_workflow_keys(pattern = workflow_key_pattern)
         connection_pool.with do |redis|
           redis.scan_each(match: pattern, count: SCAN_COUNT).to_a
         end
       end
 
-      def enqueue_task(task, at=nil)
+      def enqueue_task(task, at = nil)
         task.enqueue!
         store_task(task)
         Sidekiq::Client.push(
@@ -194,10 +199,10 @@ module SidekiqFlow
           cursor = "0"
           loop do
             cursor, keys = redis.scan(
-                      cursor,
-                      match: key_pattern,
-                      count: SCAN_COUNT
-                    )
+              cursor,
+              match: key_pattern,
+              count: SCAN_COUNT
+            )
 
             result = keys.first
 

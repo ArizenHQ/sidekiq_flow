@@ -2,7 +2,8 @@ module SidekiqFlow
   module TaskTriggerRules
     class Base
       def self.build(trigger_rule, trigger_rule_extra_opts, workflow, task_parent_klasses)
-        "SidekiqFlow::TaskTriggerRules::#{trigger_rule.camelize}".constantize.new(workflow, task_parent_klasses, trigger_rule_extra_opts)
+        "SidekiqFlow::TaskTriggerRules::#{trigger_rule.camelize}".constantize.new(workflow, task_parent_klasses,
+                                                                                  trigger_rule_extra_opts)
       end
 
       def initialize(workflow, task_parent_klasses, extra_opts)
