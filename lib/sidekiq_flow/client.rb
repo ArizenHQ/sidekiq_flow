@@ -159,9 +159,9 @@ module SidekiqFlow
         timestamp = Time.now.to_i
 
         connection_pool.with do |redis|
-          redis.pipelined do
-            redis.set("#{timestamp_namespace}.#{workflow_id}.end", timestamp)
-            redis.rename(current_key, current_key.chop.concat(timestamp.to_s))
+          redis.pipelined do |pipeline|
+            pipeline.set("#{timestamp_namespace}.#{workflow_id}.end", timestamp)
+            pipeline.rename(current_key, current_key.chop.concat(timestamp.to_s))
           end
         end
       end
@@ -227,9 +227,9 @@ module SidekiqFlow
 
       def build_workflow_key_from_timestamps(workflow_id)
         start_timestamp, end_timestamp = connection_pool.with do |redis|
-          redis.pipelined do
-            redis.get("#{timestamp_namespace}.#{workflow_id}.start")
-            redis.get("#{timestamp_namespace}.#{workflow_id}.end")
+          redis.pipelined do |pipeline|
+            pipeline.get("#{timestamp_namespace}.#{workflow_id}.start")
+            pipeline.get("#{timestamp_namespace}.#{workflow_id}.end")
           end
         end
 

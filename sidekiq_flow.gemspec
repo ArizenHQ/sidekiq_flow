@@ -29,20 +29,23 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "sidekiq", "~> 5.2.10", "< 6.0.0"
-  spec.add_dependency "redis", "~> 4.5", "< 4.6.0"
-  spec.add_dependency "activesupport", ">= 5"
-  spec.add_runtime_dependency "sinatra", "~> 2.0"
-  spec.add_runtime_dependency "thin", "~> 1.7"
-  spec.add_runtime_dependency "sprockets", "~> 3.5"
-  spec.add_runtime_dependency "uglifier", "~> 4.1"
-  spec.add_runtime_dependency "sass", "~> 3.5"
-  spec.add_runtime_dependency "timecop", "~> 0.9"
+  spec.required_ruby_version = ">= 2.7.0"
 
-  spec.add_development_dependency "bundler", "< 3.0.0"
-  spec.add_development_dependency "rake", "~> 10.0"
-  spec.add_development_dependency "rspec", "~> 3.7"
-  spec.add_development_dependency "timecop", "~> 0.9.1"
-  spec.add_development_dependency "fakeredis", "~> 0.7.0"
-  spec.add_development_dependency "pry", "~> 0.11.3"
+  spec.add_dependency "sidekiq", "< 7"
+  spec.add_dependency "redis", ["< 5", ">= 4.5.0"]
+  spec.add_dependency "connection_pool", ["< 3", ">= 2.2.5"]
+  spec.add_dependency "activesupport", "< 7"
+  spec.add_runtime_dependency "sinatra"
+  spec.add_runtime_dependency "thin"
+  spec.add_runtime_dependency "sprockets"
+  spec.add_runtime_dependency "uglifier"
+  spec.add_runtime_dependency "sass"
+  spec.add_runtime_dependency "timecop"
+
+  spec.add_development_dependency "bundler"
+  spec.add_development_dependency "rake"
+  spec.add_development_dependency "rspec"
+  spec.add_development_dependency "timecop"
+  spec.add_development_dependency "fakeredis"
+  spec.add_development_dependency "byebug"
 end
