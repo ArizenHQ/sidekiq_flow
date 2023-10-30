@@ -25,7 +25,7 @@ module SidekiqFlow
         perform_task(task)
       end
       Client.store_task(task)
-      enqueue_task_children(task) unless task.pending?
+      enqueue_or_perform_children(task) unless task.pending?
     end
 
     private
@@ -59,12 +59,16 @@ module SidekiqFlow
       TaskLogger.log(task.workflow_id, task.klass, :info, 'task succeeded')
     end
 
-    def enqueue_task_children(task)
+    def enqueue_or_perform_children(task)
       task.children.each do |child_class|
         child_task = Client.find_task(task.workflow_id, child_class)
         next unless child_task.ready_to_start?
 
-        Client.enqueue_task(child_task)
+        if task.inline?
+          perform_task(child_task)
+        else
+          Client.enqueue_task(child_task)
+        end
       end
     end
   end

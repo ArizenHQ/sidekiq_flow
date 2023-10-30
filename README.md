@@ -75,6 +75,11 @@ By starting the workflow, we understand starting all tasks having no parents (`T
   * default is `['all_succeeded', {}]` - which means that all parents have to finish with success
   * other available rule: `['number_succeeded', {number: 2}]` - at least 2 parents succedeed
 
+* `inline`
+  * Sidekiq execution may be quite slow when we have a succession of tasks (~ 5s per task).
+  * So instead of enqueuing each children task, a task may directly perform a children task when it is set to inline.
+  * default is false.
+
 
 ## Externally triggered tasks
 When a task is defined with `start_date` equals `nil` (`TestTask.new(start_date: nil`), this means the task needs to be triggered from outside the workflow. Even `trigger_rule` condition is met, this task won't be started. To start this task we need to do this explicity:

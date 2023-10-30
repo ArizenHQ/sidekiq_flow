@@ -186,6 +186,35 @@ RSpec.describe 'workflow' do
     end
   end
 
+  describe 'task inline' do
+    before do
+      allow(TestWorkflow).to receive(:initial_tasks) {
+        [
+          TestTask1.new(children: ['TestTask2', 'TestTask3']),
+          TestTask2.new(children: ['TestTask4'], inline: true),
+          TestTask3.new(children: ['TestTask4']),
+          TestTask4.new(inline: true)
+        ]
+      }
+    end
+
+    it 'behaves properly' do
+      workflow = TestWorkflow.new(id: 123)
+      SidekiqFlow::Client.start_workflow(workflow)
+
+      SidekiqFlow::Worker.perform_one
+      # Task 1 succeed, which perform task 2 and enqueue task 3.
+      # Task 2 succeed, which doesn't enqueue task 4 because it's not ready.
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
+                                                                                        'enqueued', 'pending'])
+
+      SidekiqFlow::Worker.perform_one
+      # Task 3 succeed, which perform task 4.
+      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
+                                                                                        'succeeded', 'succeeded'])
+    end
+  end
+
   describe 'expired task' do
     before do
       allow(TestWorkflow).to receive(:initial_tasks) {
