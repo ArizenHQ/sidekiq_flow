@@ -1,6 +1,9 @@
 module SidekiqFlow
   class Worker
+
     include Sidekiq::Worker
+
+    DEFAULT_RETRY_DELAY = 5.seconds
 
     sidekiq_retries_exhausted do |msg|
       task = Client.find_task(*msg['args'])
@@ -14,7 +17,9 @@ module SidekiqFlow
       task = Client.find_task(workflow_id, task_class)
       return if !task.enqueued? && !task.awaiting_retry?
 
-      if task.auto_succeed?
+      if task.succeeded?
+        TaskLogger.log(workflow_id, task_class, :info, 'task already succeeded')
+      elsif task.auto_succeed?
         task.succeed!
         TaskLogger.log(workflow_id, task_class, :info, 'task succeeded')
       elsif task.expired?
@@ -65,11 +70,16 @@ module SidekiqFlow
         next unless child_task.ready_to_start?
 
         if task.inline?
-          perform_task(child_task)
+          begin
+            perform_task(child_task)
+          rescue StandardError
+            Client.enqueue_task(child_task, (Time.now + DEFAULT_RETRY_DELAY).to_i) if task.awaiting_retry?
+          end
         else
           Client.enqueue_task(child_task)
         end
       end
     end
+
   end
 end
