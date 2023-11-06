@@ -28,6 +28,7 @@ module SidekiqFlow
       @trigger_rule = attrs[:trigger_rule] || ['all_succeeded', {}]
       @params = attrs[:params] || {}
       @parents = attrs[:parents] || []
+      @inline = attrs[:inline] || false
       @error_msg = attrs[:error_msg]
     end
 

@@ -15,7 +15,7 @@ module SidekiqFlow
     def perform(workflow_id, task_class)
       TaskLogger.log(workflow_id, task_class, :info, 'task started')
       task = Client.find_task(workflow_id, task_class)
-      return if !task.enqueued? && !task.awaiting_retry?
+      return if !task.inline? && !task.enqueued? && !task.awaiting_retry?
 
       if task.succeeded?
         TaskLogger.log(workflow_id, task_class, :info, 'task already succeeded')
@@ -69,11 +69,11 @@ module SidekiqFlow
         child_task = Client.find_task(task.workflow_id, child_class)
         next unless child_task.ready_to_start?
 
-        if task.inline?
+        if child_task.inline?
           begin
-            perform_task(child_task)
+            perform(child_task.workflow_id, child_class)
           rescue StandardError
-            Client.enqueue_task(child_task, (Time.now + DEFAULT_RETRY_DELAY).to_i) if task.awaiting_retry?
+            Client.enqueue_task(child_task, (Time.now + DEFAULT_RETRY_DELAY).to_i) if child_task.awaiting_retry?
           end
         else
           Client.enqueue_task(child_task)

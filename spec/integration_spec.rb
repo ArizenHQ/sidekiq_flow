@@ -220,8 +220,7 @@ RSpec.describe 'workflow' do
 
     context 'in case of retry' do
       before do
-        allow_any_instance_of(TestTask2).to receive(:perform).once.and_raise(SidekiqFlow::RepeatTask)
-        allow_any_instance_of(TestTask2).to receive(:perform).once.and_return(true)
+        allow_any_instance_of(TestTask2).to receive(:perform).and_raise(SidekiqFlow::RepeatTask)
       end
 
       it 'behaves properly' do
@@ -234,10 +233,12 @@ RSpec.describe 'workflow' do
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued',
                                                                                           'enqueued', 'pending'])
 
+        allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
+
         SidekiqFlow::Worker.perform_one
         # Task 2 succeed, which enqueue task 4.
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'enqueued', 'enqueued'])
+                                                                                          'enqueued', 'pending'])
 
         SidekiqFlow::Worker.perform_one
         # Task 3 succeed, which perform task 4.
@@ -250,8 +251,7 @@ RSpec.describe 'workflow' do
       let(:retries) { 1 }
 
       before do
-        allow_any_instance_of(TestTask2).to receive(:perform).once.and_raise(RuntimeError)
-        allow_any_instance_of(TestTask2).to receive(:perform).once.and_return(true)
+        allow_any_instance_of(TestTask2).to receive(:perform).and_raise(RuntimeError)
       end
 
       it 'behaves properly' do
@@ -265,12 +265,20 @@ RSpec.describe 'workflow' do
                                                                                           'enqueued', 'pending'])
 
         SidekiqFlow::Worker.perform_one
-        # Task 2 succeed, which enqueue task 4.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'enqueued', 'enqueued'])
+
+        # Task 3 succeed, which cannot inline task 4 as it is waiting for task 2.
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'awaiting_retry',
+                                                                                          'succeeded', 'pending'])
+
+        allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
+
+        # clear state so that it won't raise TaskUnstartable
+        SidekiqFlow::Client.clear_task(workflow.id, 'TestTask2')
+        # start task
+        SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
 
         SidekiqFlow::Worker.perform_one
-        # Task 3 succeed, which perform task 4.
+        # Task 2 succeed, which perform task 4.
         expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
                                                                                           'succeeded', 'succeeded'])
       end
@@ -278,7 +286,7 @@ RSpec.describe 'workflow' do
 
     context 'in case of unretrieable exception' do
       before do
-        allow_any_instance_of(TestTask2).to receive(:perform).once.and_raise(RuntimeError)
+        allow_any_instance_of(TestTask2).to receive(:perform).and_raise(RuntimeError)
       end
 
       it 'behaves properly' do
@@ -288,13 +296,15 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.perform_one
         # Task 1 succeed, which perform task 2 and enqueue task 3.
         # Task 2 raise and is not enqueued.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'error',
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'failed',
                                                                                           'enqueued', 'pending'])
+
+        allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
 
         SidekiqFlow::Worker.perform_one
         # Task 3 succeed, which perform task 4.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'error',
-                                                                                          'succeeded', 'succeeded'])
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'failed',
+                                                                                          'succeeded', 'pending'])
       end
     end
   end
