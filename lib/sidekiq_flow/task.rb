@@ -9,7 +9,7 @@ module SidekiqFlow
 
     def self.attribute_names
       [
-        :start_date, :end_date, :loop_interval, :retries, :queue,
+        :start_date, :end_date, :loop_interval, :retries, :queue, :inline,
         :children, :status, :trigger_rule, :params, :error_msg
       ]
     end
@@ -28,6 +28,7 @@ module SidekiqFlow
       @trigger_rule = attrs[:trigger_rule] || ['all_succeeded', {}]
       @params = attrs[:params] || {}
       @parents = attrs[:parents] || []
+      @inline = attrs[:inline] || false
       @error_msg = attrs[:error_msg]
     end
 
@@ -119,6 +120,10 @@ module SidekiqFlow
 
     def auto_succeed?
       false
+    end
+
+    def inline?
+      @inline == true
     end
 
     def set_workflow_data!(workflow, workflow_params)

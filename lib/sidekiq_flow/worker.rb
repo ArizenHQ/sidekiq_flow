@@ -1,6 +1,9 @@
 module SidekiqFlow
   class Worker
+
     include Sidekiq::Worker
+
+    DEFAULT_RETRY_DELAY = 5.seconds
 
     sidekiq_retries_exhausted do |msg|
       task = Client.find_task(*msg['args'])
@@ -12,9 +15,11 @@ module SidekiqFlow
     def perform(workflow_id, task_class)
       TaskLogger.log(workflow_id, task_class, :info, 'task started')
       task = Client.find_task(workflow_id, task_class)
-      return if !task.enqueued? && !task.awaiting_retry?
+      return if !task.inline? && !task.enqueued? && !task.awaiting_retry?
 
-      if task.auto_succeed?
+      if task.succeeded?
+        TaskLogger.log(workflow_id, task_class, :info, 'task already succeeded')
+      elsif task.auto_succeed?
         task.succeed!
         TaskLogger.log(workflow_id, task_class, :info, 'task succeeded')
       elsif task.expired?
@@ -25,7 +30,7 @@ module SidekiqFlow
         perform_task(task)
       end
       Client.store_task(task)
-      enqueue_task_children(task) unless task.pending?
+      enqueue_or_perform_children(task) unless task.pending?
     end
 
     private
@@ -59,13 +64,22 @@ module SidekiqFlow
       TaskLogger.log(task.workflow_id, task.klass, :info, 'task succeeded')
     end
 
-    def enqueue_task_children(task)
+    def enqueue_or_perform_children(task)
       task.children.each do |child_class|
         child_task = Client.find_task(task.workflow_id, child_class)
         next unless child_task.ready_to_start?
 
-        Client.enqueue_task(child_task)
+        if child_task.inline?
+          begin
+            perform(child_task.workflow_id, child_class)
+          rescue StandardError
+            Client.enqueue_task(child_task, (Time.now + DEFAULT_RETRY_DELAY).to_i) if child_task.awaiting_retry?
+          end
+        else
+          Client.enqueue_task(child_task)
+        end
       end
     end
+
   end
 end
