@@ -18,7 +18,7 @@ module SidekiqFlow
 
     def initialize(attrs = {})
       super
-      @start_date = attrs.fetch(:start_date, Time.now.to_i)
+      @start_date = attrs.fetch(:start_date, Time.now.to_i) # may return nil for manual start
       @end_date = attrs[:end_date]
       @loop_interval = attrs[:loop_interval] || 0
       @retries = attrs[:retries] || SidekiqFlow.configuration.retries
@@ -116,6 +116,11 @@ module SidekiqFlow
 
     def ready_to_start?
       pending? && !external_trigger? && trigger_rule_instance.met?
+    end
+
+    # When task is ready to start, it can be run inline if start date is not too far in the future.
+    def ready_to_perform_inline?
+      inline? && start_date < 1.second.from_now
     end
 
     def auto_succeed?

@@ -307,6 +307,28 @@ RSpec.describe 'workflow' do
                                                                                           'succeeded', 'pending'])
       end
     end
+
+    context 'start date is in the future' do
+      before do
+        allow(TestWorkflow).to receive(:initial_tasks) {
+          [
+            TestTask1.new(children: ['TestTask2', 'TestTask3']),
+            TestTaskStartDateOverloaded.new(children: ['TestTask4'], inline: true),
+            TestTask3.new(children: ['TestTask4']),
+            TestTask4.new(inline: true)
+          ]
+        }
+      end
+
+      it 'behaves properly' do
+        workflow = TestWorkflow.new(id: 123)
+        SidekiqFlow::Client.start_workflow(workflow)
+        SidekiqFlow::Worker.perform_one
+        # inline task has not been perform because start date is in the future
+        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued',
+                                                                                          'enqueued', 'pending'])
+      end
+    end
   end
 
   describe 'expired task' do
