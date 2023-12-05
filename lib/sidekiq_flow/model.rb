@@ -10,7 +10,11 @@ module SidekiqFlow
 
     def initialize(*args)
       self.class.attribute_names.each do |attr_name|
-        class_eval { attr_accessor attr_name }
+        class_eval do
+          # Allow overloading
+          attr_reader attr_name unless (instance_methods + private_instance_methods).include?(attr_name)
+          attr_writer attr_name unless (instance_methods + private_instance_methods).include?(":#{attr_name}=")
+        end
       end
     end
 

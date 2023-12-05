@@ -14,6 +14,14 @@ class TestTask4 < SidekiqFlow::Task
   def perform; end
 end
 
+class TestTaskStartDateOverloaded < SidekiqFlow::Task
+  def perform; end
+
+  def start_date
+    1.hour_from_now
+  end
+end
+
 class TestWorkflow < SidekiqFlow::Workflow
   def succeeded?
     find_task(TestTask4.to_s).succeeded?
