@@ -120,7 +120,7 @@ module SidekiqFlow
 
     # When task is ready to start, it can be run inline if start date is not too far in the future.
     def ready_to_perform_inline?
-      inline? && start_date < 1.second.from_now
+      inline? && start_date < 1.second.from_now.to_i
     end
 
     def auto_succeed?
