@@ -312,7 +312,7 @@ RSpec.describe 'workflow' do
       before do
         allow(TestWorkflow).to receive(:initial_tasks) {
           [
-            TestTask1.new(children: ['TestTask2', 'TestTask3']),
+            TestTask1.new(children: ['TestTaskStartDateOverloaded', 'TestTask3']),
             TestTaskStartDateOverloaded.new(children: ['TestTask4'], inline: true),
             TestTask3.new(children: ['TestTask4']),
             TestTask4.new(inline: true)
