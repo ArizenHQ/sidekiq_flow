@@ -69,7 +69,7 @@ module SidekiqFlow
         child_task = Client.find_task(task.workflow_id, child_class)
         next unless child_task.ready_to_start?
 
-        if child_task.inline?
+        if child_task.ready_to_perform_inline?
           begin
             perform(child_task.workflow_id, child_class)
           rescue StandardError
