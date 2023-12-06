@@ -18,7 +18,7 @@ class TestTaskStartDateOverloaded < SidekiqFlow::Task
   def perform; end
 
   def start_date
-    1.hour_from_now.to_i
+    1.hour.from_now.to_i
   end
 end
 
