@@ -13,7 +13,8 @@ module SidekiqFlow
 
       def start_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
-        raise TaskUnstartable unless task.pending?
+
+        raise TaskUnstartable, "Cannot start #{task_class} with status: #{task.status}" unless task.pending?
 
         enqueue_task(task, Time.now.to_i)
       end
@@ -122,11 +123,7 @@ module SidekiqFlow
       def connection_pool
         @connection_pool ||=
           ConnectionPool.new(size: configuration.concurrency, timeout: configuration.timeout) do
-            if configuration.redis
-              configuration.redis
-            else
-              Redis.new(url: configuration.redis_url)
-            end
+            configuration.redis || Redis.new(url: configuration.redis_url)
           end
       end
 
@@ -196,7 +193,7 @@ module SidekiqFlow
         result = nil
 
         connection_pool.with do |redis|
-          cursor = "0"
+          cursor = '0'
           loop do
             cursor, keys = redis.scan(
               cursor,
@@ -206,7 +203,7 @@ module SidekiqFlow
 
             result = keys.first
 
-            break if (result || cursor == "0")
+            break if result || cursor == '0'
           end
         end
 
@@ -216,7 +213,7 @@ module SidekiqFlow
       # Optimization to avoid N+1 Redis scans
 
       def timestamp_namespace
-        "workflow-timestamps"
+        'workflow-timestamps'
       end
 
       def store_start_timestamp(workflow_id, timestamp)
@@ -239,11 +236,9 @@ module SidekiqFlow
                          "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_0"
                        end
         # sanity check find in case workflow key was already deleted
-        if workflow_key && workflow_key_exists?(workflow_key)
-          workflow_key
-        else
-          nil
-        end
+        return unless workflow_key && workflow_key_exists?(workflow_key)
+
+        workflow_key
       end
 
       def workflow_key_exists?(workflow_key)
