@@ -13,7 +13,7 @@ module SidekiqFlow
 
       def start_task(workflow_id, task_class)
         task = find_task(workflow_id, task_class)
-        raise TaskUnstartable unless task.pending?
+        raise TaskUnstartable, "Cannot start #{task.name} with status: #{task.status}" unless task.pending?
 
         enqueue_task(task, Time.now.to_i)
       end
