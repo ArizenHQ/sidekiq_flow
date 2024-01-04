@@ -56,9 +56,12 @@ module SidekiqFlow
       end
 
       def find_workflow(workflow_id)
+        workflow_key = find_workflow_key(workflow_id)
         connection_pool.with do |redis|
-          workflow_redis_hash = redis.hgetall(find_workflow_key(workflow_id))
-          raise WorkflowNotFound if workflow_redis_hash.empty?
+          workflow_redis_hash = redis.hgetall(workflow_key)
+          if workflow_redis_hash.empty?
+            raise WorkflowNotFound, "Missing workflow with id #{workflow_id} and key #{workflow_key}"
+          end
 
           Workflow.from_redis_hash(workflow_redis_hash)
         end

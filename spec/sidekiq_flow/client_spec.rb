@@ -323,7 +323,7 @@ RSpec.describe SidekiqFlow::Client do
       it 'should raise WorkflowNotFound' do
         expect {
           subject
-        }.to raise_exception(SidekiqFlow::WorkflowNotFound)
+        }.to raise_exception(SidekiqFlow::WorkflowNotFound, /#{configuration.namespace}.#{workflow_id}_/)
       end
     end
   end
