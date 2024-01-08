@@ -1,0 +1,23 @@
+---
+#---
+version: '3'
+volumes:
+  db-data:
+    external: false
+  bundle-data:
+    external: false
+  redis-data:
+    external: false
+
+services:
+  dev:
+    build:
+      context: '.'
+      dockerfile: ./Dockerfile
+    container_name: sidekiq_flow
+    command: 'tail -f /dev/null'
+    volumes:
+      - bundle-data:/usr/local/bundle:cached
+    environment:
+      SSH_AUTH_SOCK: /ssh-agent
+    hostname: sidekiq_flow
