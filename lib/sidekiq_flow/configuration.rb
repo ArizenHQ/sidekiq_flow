@@ -10,7 +10,7 @@ module SidekiqFlow
                   :redis
 
     def initialize
-      @redis_url = 'redis://localhost:6379'
+      @redis_url = 'redis://:password@redis:6379'
       @concurrency = 10
       @namespace = 'workflows'
       @queue = 'default'
