@@ -1,6 +1,18 @@
 require 'spec_helper'
 
+module SidekiqFlow
+  class Task
+    def to_s
+      "#{klass} - #{status}"
+    end
+  end
+end
+
 RSpec.describe 'workflow' do
+  def task_states(workflow)
+    SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:to_s)
+  end
+
   describe 'happy path' do
     before do
       allow(TestWorkflow).to receive(:initial_tasks) {
@@ -19,23 +31,26 @@ RSpec.describe 'workflow' do
       expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued',
-                                                                                        'enqueued', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - enqueued', 'TestTask3 - enqueued', 'TestTask4 - pending'])
       expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                        'enqueued', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - enqueued', 'TestTask4 - pending'])
+
       expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                        'succeeded', 'enqueued'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - enqueued'])
+
       expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_0$/)
 
       SidekiqFlow::Worker.perform_one
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                        'succeeded', 'succeeded'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'])
+
       expect(SidekiqFlow::Client.find_workflow_key(workflow.id)).to match(/^.+\.123_\d+_\d{2,}$/)
 
       expect(SidekiqFlow::Worker.jobs).to be_empty
@@ -61,8 +76,8 @@ RSpec.describe 'workflow' do
       expect do
         SidekiqFlow::Worker.drain
       end.to raise_error(RuntimeError)
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                        'failed', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - failed', 'TestTask4 - pending'])
     end
   end
 
@@ -85,8 +100,8 @@ RSpec.describe 'workflow' do
       expect do
         SidekiqFlow::Worker.drain
       end.to raise_error(RuntimeError)
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                        'awaiting_retry', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - awaiting_retry', 'TestTask4 - pending'])
     end
   end
 
@@ -107,19 +122,22 @@ RSpec.describe 'workflow' do
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'pending', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - pending', 'TestTask4 - pending'])
 
       expect do
         SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
       end.to raise_error(SidekiqFlow::TaskUnstartable)
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'pending', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - pending', 'TestTask4 - pending'])
 
       SidekiqFlow::Client.start_task(workflow.id, 'TestTask3')
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'])
     end
   end
 
@@ -168,21 +186,21 @@ RSpec.describe 'workflow' do
       SidekiqFlow::Client.start_workflow(workflow)
 
       SidekiqFlow::Worker.perform_one
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending',
-                                                                                        'pending', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - enqueued',
+                                                    'TestTask2 - pending', 'TestTask3 - pending', 'TestTask4 - pending'])
 
       SidekiqFlow::Worker.perform_one
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending',
-                                                                                        'pending', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - enqueued',
+                                                    'TestTask2 - pending', 'TestTask3 - pending', 'TestTask4 - pending'])
 
       allow_any_instance_of(TestTask1).to receive(:perform)
       SidekiqFlow::Worker.perform_one
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued',
-                                                                                        'enqueued', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - enqueued', 'TestTask3 - enqueued', 'TestTask4 - pending'])
 
       SidekiqFlow::Worker.drain
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                        'succeeded', 'succeeded'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'])
     end
   end
 
@@ -208,13 +226,15 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.perform_one
         # Task 1 succeed, which perform task 2 and enqueue task 3.
         # Task 2 succeed, which doesn't enqueue task 4 because it's not ready.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'enqueued', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - enqueued', 'TestTask4 - pending'
+                                                     ])
 
         SidekiqFlow::Worker.perform_one
         # Task 3 succeed, which perform task 4.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'succeeded', 'succeeded'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'
+                                                     ])
       end
     end
 
@@ -230,20 +250,23 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.perform_one
         # Task 1 succeed, which perform task 2 and enqueue task 3.
         # Task 2 raise a retry.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued',
-                                                                                          'enqueued', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - enqueued', 'TestTask3 - enqueued', 'TestTask4 - pending'
+                                                     ])
 
         allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
 
         SidekiqFlow::Worker.perform_one
         # Task 2 succeed, which enqueue task 4.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'enqueued', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - enqueued', 'TestTask4 - pending'
+                                                     ])
 
         SidekiqFlow::Worker.perform_one
         # Task 3 succeed, which perform task 4.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'succeeded', 'succeeded'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'
+                                                     ])
       end
     end
 
@@ -261,14 +284,16 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.perform_one
         # Task 1 succeed, which perform task 2 and enqueue task 3.
         # Task 2 raise a retry and is enqueued.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'awaiting_retry',
-                                                                                          'enqueued', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - awaiting_retry', 'TestTask3 - enqueued', 'TestTask4 - pending'
+                                                     ])
 
         SidekiqFlow::Worker.perform_one
 
         # Task 3 succeed, which cannot inline task 4 as it is waiting for task 2.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'awaiting_retry',
-                                                                                          'succeeded', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - awaiting_retry', 'TestTask3 - succeeded', 'TestTask4 - pending'
+                                                     ])
 
         allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
 
@@ -279,8 +304,9 @@ RSpec.describe 'workflow' do
 
         SidekiqFlow::Worker.perform_one
         # Task 2 succeed, which perform task 4.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'succeeded', 'succeeded'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'
+                                                     ])
       end
     end
 
@@ -296,15 +322,17 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Worker.perform_one
         # Task 1 succeed, which perform task 2 and enqueue task 3.
         # Task 2 raise and is not enqueued.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'failed',
-                                                                                          'enqueued', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - failed', 'TestTask3 - enqueued', 'TestTask4 - pending'
+                                                     ])
 
         allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
 
         SidekiqFlow::Worker.perform_one
         # Task 3 succeed, which perform task 4.
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'failed',
-                                                                                          'succeeded', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - failed', 'TestTask3 - succeeded', 'TestTask4 - pending'
+                                                     ])
       end
     end
 
@@ -325,8 +353,9 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Client.start_workflow(workflow)
         SidekiqFlow::Worker.perform_one
         # inline task has not been perform because start date is in the future
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'enqueued',
-                                                                                          'enqueued', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTaskStartDateOverloaded - enqueued', 'TestTask3 - enqueued', 'TestTask4 - pending'
+                                                     ])
       end
     end
   end
@@ -347,8 +376,9 @@ RSpec.describe 'workflow' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::Worker.drain
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['failed', 'pending', 'pending',
-                                                                                        'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - failed',
+                                                    'TestTask2 - pending', 'TestTask3 - pending', 'TestTask4 - pending'])
+
       expect(SidekiqFlow::Client.find_task(workflow.id, 'TestTask1').error_msg).to eq('expired')
     end
   end
@@ -372,22 +402,25 @@ RSpec.describe 'workflow' do
         workflow = TestWorkflow.new(id: 1)
         SidekiqFlow::Client.start_workflow(workflow)
         SidekiqFlow::Worker.drain
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped',
-                                                                                          'skipped', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - skipped', 'TestTask3 - skipped', 'TestTask4 - pending'
+                                                     ])
 
         allow_any_instance_of(TestTask3).to receive(:perform)
         workflow = TestWorkflow.new(id: 2)
         SidekiqFlow::Client.start_workflow(workflow)
         SidekiqFlow::Worker.drain
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped',
-                                                                                          'succeeded', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - skipped', 'TestTask3 - succeeded', 'TestTask4 - pending'
+                                                     ])
 
         allow_any_instance_of(TestTask2).to receive(:perform)
         workflow = TestWorkflow.new(id: 3)
         SidekiqFlow::Client.start_workflow(workflow)
         SidekiqFlow::Worker.drain
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'succeeded', 'succeeded'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'
+                                                     ])
       end
     end
 
@@ -409,22 +442,25 @@ RSpec.describe 'workflow' do
         workflow = TestWorkflow.new(id: 1)
         SidekiqFlow::Client.start_workflow(workflow)
         SidekiqFlow::Worker.drain
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped',
-                                                                                          'skipped', 'pending'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - skipped', 'TestTask3 - skipped', 'TestTask4 - pending'
+                                                     ])
 
         allow_any_instance_of(TestTask3).to receive(:perform)
         workflow = TestWorkflow.new(id: 2)
         SidekiqFlow::Client.start_workflow(workflow)
         SidekiqFlow::Worker.drain
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'skipped',
-                                                                                          'succeeded', 'succeeded'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - skipped', 'TestTask3 - succeeded', 'TestTask4 - succeeded'
+                                                     ])
 
         allow_any_instance_of(TestTask2).to receive(:perform)
         workflow = TestWorkflow.new(id: 3)
         SidekiqFlow::Client.start_workflow(workflow)
         SidekiqFlow::Worker.drain
-        expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                          'succeeded', 'succeeded'])
+        expect(task_states(workflow)).to match_array([
+                                                       'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'
+                                                     ])
       end
     end
   end
@@ -446,11 +482,12 @@ RSpec.describe 'workflow' do
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'])
 
       SidekiqFlow::Client.restart_task(workflow.id, 'TestTask1')
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['enqueued', 'pending',
-                                                                                        'pending', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - enqueued',
+                                                    'TestTask2 - pending', 'TestTask3 - pending', 'TestTask4 - pending'])
     end
   end
 
@@ -512,8 +549,8 @@ RSpec.describe 'workflow' do
       workflow = TestWorkflow.new(id: 123)
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::Worker.drain
-      expect(SidekiqFlow::Client.find_workflow(workflow.id).tasks.map(&:status)).to eq(['succeeded', 'succeeded',
-                                                                                        'succeeded', 'succeeded'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'])
     end
   end
 
@@ -570,13 +607,15 @@ RSpec.describe 'workflow' do
       SidekiqFlow::Client.start_workflow(workflow)
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'pending', 'pending', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - pending', 'TestTask3 - pending', 'TestTask4 - pending'])
 
       # trigger the manual task
       SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'pending', 'pending', 'pending'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - pending', 'TestTask3 - pending', 'TestTask4 - pending'])
 
       # second run is ok
       allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
@@ -585,7 +624,8 @@ RSpec.describe 'workflow' do
       SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
       SidekiqFlow::Worker.drain
       workflow = SidekiqFlow::Client.find_workflow(workflow.id)
-      expect(workflow.tasks.map(&:status)).to eq(['succeeded', 'succeeded', 'succeeded', 'succeeded'])
+      expect(task_states(workflow)).to match_array(['TestTask1 - succeeded',
+                                                    'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'])
     end
   end
 end
