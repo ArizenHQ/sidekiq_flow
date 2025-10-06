@@ -172,17 +172,7 @@ module SidekiqFlow
       end
 
       def already_started?(workflow_id)
-        workflow_key = build_workflow_key_from_timestamps(workflow_id)
-        return true if workflow_key
-
-        # N+1 scan legacy behaviour
-        key_pattern = already_started_workflow_key_pattern(workflow_id)
-
-        find_first(key_pattern).present?
-      end
-
-      def already_started_workflow_key_pattern(workflow_id)
-        "#{configuration.namespace}.#{workflow_id}_*_0"
+        build_workflow_key_from_timestamps(workflow_id).present?
       end
 
       def already_succeeded?(workflow_id, workflow_key)
