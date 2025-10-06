@@ -106,12 +106,9 @@ module SidekiqFlow
 
       def find_workflow_key(workflow_id)
         workflow_key = build_workflow_key_from_timestamps(workflow_id)
-        return workflow_key if workflow_key
+        raise WorkflowKeyNotFound, "Cannot find workflow_key for workflow #{workflow_id}. Probably already deleted." unless workflow_key
 
-        # N+1 scan legacy behaviour
-        key_pattern = "#{configuration.namespace}.#{workflow_id}_*"
-
-        find_first(key_pattern)
+        workflow_key
       end
 
       def set_task_queue(workflow_id, task_class, queue)
@@ -177,27 +174,6 @@ module SidekiqFlow
 
       def already_succeeded?(workflow_id, workflow_key)
         workflow_key.match(/#{configuration.namespace}\.#{workflow_id}_\d{10}_\d{10}/)
-      end
-
-      def find_first(key_pattern)
-        result = nil
-
-        connection_pool.with do |redis|
-          cursor = '0'
-          loop do
-            cursor, keys = redis.scan(
-              cursor,
-              match: key_pattern,
-              count: SCAN_COUNT
-            )
-
-            result = keys.first
-
-            break if result || cursor == '0'
-          end
-        end
-
-        result
       end
 
       # Optimization to avoid N+1 Redis scans
