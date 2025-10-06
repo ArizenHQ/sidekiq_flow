@@ -78,7 +78,11 @@ module SidekiqFlow
         return if workflow_key.blank?
 
         connection_pool.with do |redis|
-          redis.del(workflow_key)
+          redis.pipelined do |pipeline|
+            pipeline.del(workflow_key)
+            pipeline.del("#{timestamp_namespace}.#{workflow_id}.start")
+            pipeline.del("#{timestamp_namespace}.#{workflow_id}.end")
+          end
         end
       end
 
@@ -86,8 +90,11 @@ module SidekiqFlow
         workflow_keys = find_workflow_keys(succeeded_workflow_key_pattern)
         return if workflow_keys.empty?
 
+        workflow_ids = workflow_keys.map { |key| key.match(/#{configuration.namespace}\.(\d+)_/)[1] }
+        timestamp_keys = workflow_ids.flat_map { |id| ["#{timestamp_namespace}.#{id}.start", "#{timestamp_namespace}.#{id}.end"] }
+
         connection_pool.with do |redis|
-          redis.del(*workflow_keys)
+          redis.del(*workflow_keys, *timestamp_keys)
         end
       end
 
