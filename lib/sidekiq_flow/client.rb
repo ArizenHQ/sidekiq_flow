@@ -38,6 +38,9 @@ module SidekiqFlow
 
       def store_workflow(workflow, initial = false)
         workflow_key = initial ? generate_initial_workflow_key(workflow.id) : find_workflow_key(workflow.id)
+
+        return if workflow_key.blank?
+
         connection_pool.with do |redis|
           redis.hmset(
             workflow_key,
@@ -48,7 +51,10 @@ module SidekiqFlow
 
       def store_task(task)
         connection_pool.with do |redis|
-          redis.hset(find_workflow_key(task.workflow_id), task.klass, task.to_json)
+          workflow_key = find_workflow_key(task.workflow_id)
+          return if workflow_key.blank?
+
+          redis.hset(workflow_key, task.klass, task.to_json)
         end
         return unless workflow_succeeded?(task.workflow_id)
 
@@ -57,7 +63,10 @@ module SidekiqFlow
 
       def find_workflow(workflow_id)
         connection_pool.with do |redis|
-          workflow_redis_hash = redis.hgetall(find_workflow_key(workflow_id))
+          workflow_key = find_workflow_key(workflow_id)
+          raise WorkflowNotFound if workflow_key.blank?
+
+          workflow_redis_hash = redis.hgetall(workflow_key)
           raise WorkflowNotFound if workflow_redis_hash.empty?
 
           Workflow.from_redis_hash(workflow_redis_hash)
@@ -65,8 +74,11 @@ module SidekiqFlow
       end
 
       def destroy_workflow(workflow_id)
+        workflow_key = find_workflow_key(workflow_id)
+        return if workflow_key.blank?
+
         connection_pool.with do |redis|
-          redis.del(find_workflow_key(workflow_id))
+          redis.del(workflow_key)
         end
       end
 
@@ -106,7 +118,8 @@ module SidekiqFlow
 
       def find_workflow_key(workflow_id)
         workflow_key = build_workflow_key_from_timestamps(workflow_id)
-        raise WorkflowKeyNotFound, "Cannot find workflow_key for workflow #{workflow_id}. Probably already deleted." unless workflow_key
+
+        return if workflow_key.blank?
 
         workflow_key
       end
