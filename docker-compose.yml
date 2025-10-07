@@ -1,0 +1,15 @@
+services:
+  sidekiq_flow:
+    build:
+      context: '.'
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:6.2.6-alpine
+    command: redis-server --requirepass password
+    expose:
+      - 6379

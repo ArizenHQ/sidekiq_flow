@@ -251,10 +251,12 @@ RSpec.describe SidekiqFlow::Client do
       end
 
       it 'should override the existing stored workflow' do
-        hash1 = redis.hgetall(redis.keys.last)
+        key = redis.keys.detect { |element| element.include?('_0') }
+
+        hash1 = redis.hgetall(key)
         workflow.clear_branch!('TestTask1')
         subject
-        hash2 = redis.hgetall(redis.keys.last)
+        hash2 = redis.hgetall(key)
 
         expect(hash1).not_to eq(hash2)
       end
