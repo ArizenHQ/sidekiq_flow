@@ -93,16 +93,21 @@ module SidekiqFlow
 
       # Retrieves a workflow from Redis and reconstructs it as a Workflow object
       # @param workflow_id [String, Integer] the workflow identifier
-      # @return [Workflow, nil] the reconstructed workflow instance or nil if not found
+      # @return [Workflow] the reconstructed workflow instance
+      # @raise [WorkflowNotFound] if the workflow doesn't exist in Redis
       def find_workflow(workflow_id)
         connection_pool.with do |redis|
           workflow_key = find_workflow_key(workflow_id)
+
+          if workflow_key.blank?
+            logger.error("Workflow[#{workflow_id}] Cannot find workflow: workflow_key not found")
+            raise WorkflowNotFound
+          end
 
           workflow_redis_hash = redis.hgetall(workflow_key)
 
           if workflow_redis_hash.empty?
             logger.error("Workflow[#{workflow_id}] Cannot find workflow: workflow data is empty")
-
             raise WorkflowNotFound
           end
 
