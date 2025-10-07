@@ -377,14 +377,19 @@ module SidekiqFlow
           end
         end
 
+        return nil unless start_timestamp
+
         workflow_key = if end_timestamp && start_timestamp
                          "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_#{end_timestamp}"
                        elsif start_timestamp
                          "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_0"
                        end
 
-        # Sanity check in case workflow key was already deleted
-        return unless workflow_key && workflow_key_exists?(workflow_key)
+        # Verify the workflow data actually exists
+        unless workflow_key_exists?(workflow_key)
+          logger.warn("Workflow[#{workflow_id}] Timestamps exist but workflow data missing (key: #{workflow_key})")
+          return nil
+        end
 
         workflow_key
       end
