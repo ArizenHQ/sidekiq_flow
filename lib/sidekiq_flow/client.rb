@@ -270,8 +270,10 @@ module SidekiqFlow
       def succeed_workflow(workflow_id)
         current_key = find_workflow_key(workflow_id)
 
-        # NOTE: Race condition. Some other task might have renamed/deleted the key already.
-        return if current_key.blank?
+        if current_key.blank?
+          logger.warn("Workflow[#{workflow_id}] Cannot succeed workflow: workflow_key not found")
+          return
+        end
 
         return if already_succeeded?(workflow_id, current_key)
 
