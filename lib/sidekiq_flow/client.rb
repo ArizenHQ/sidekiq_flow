@@ -57,7 +57,13 @@ module SidekiqFlow
       # @param initial [Boolean] whether this is the first time storing this workflow
       # @return [void]
       def store_workflow(workflow, initial = false)
-        workflow_key = initial ? generate_initial_workflow_key(workflow.id) : find_workflow_key(workflow.id)
+        workflow_key = if initial
+                         timestamp = Time.now.to_i
+                         store_start_timestamp(workflow.id, timestamp)
+                         generate_initial_workflow_key(workflow.id, timestamp)
+                       else
+                         find_workflow_key(workflow.id)
+                       end
 
         if workflow_key.blank?
           logger.error("Workflow[#{workflow.id}] Cannot store workflow: workflow_key not found")
@@ -77,7 +83,7 @@ module SidekiqFlow
       # @return [void]
       def store_task(task)
         connection_pool.with do |redis|
-          workflow_key = find_workflow_key(task.workflow_id)
+          workflow_key = find_workflow_key(task.workflow_id, redis)
 
           if workflow_key.blank?
             logger.error("Workflow[#{task.workflow_id}][#{task.klass}] Cannot store task: workflow_key not found")
@@ -97,7 +103,7 @@ module SidekiqFlow
       # @raise [WorkflowNotFound] if the workflow doesn't exist in Redis
       def find_workflow(workflow_id)
         connection_pool.with do |redis|
-          workflow_key = find_workflow_key(workflow_id)
+          workflow_key = find_workflow_key(workflow_id, redis)
 
           if workflow_key.blank?
             logger.error("Workflow[#{workflow_id}] Cannot find workflow: workflow_key not found")
@@ -144,7 +150,9 @@ module SidekiqFlow
         return if workflow_keys.empty?
 
         workflow_ids = workflow_keys.map { |key| key.match(/#{configuration.namespace}\.(\d+)_/)[1] }
-        timestamp_keys = workflow_ids.flat_map { |id| ["#{timestamp_namespace}.#{id}.start", "#{timestamp_namespace}.#{id}.end"] }
+        timestamp_keys = workflow_ids.flat_map do |id|
+          ["#{timestamp_namespace}.#{id}.start", "#{timestamp_namespace}.#{id}.end"]
+        end
 
         connection_pool.with do |redis|
           redis.pipelined do |pipeline|
@@ -192,21 +200,10 @@ module SidekiqFlow
 
       # Looks up the Redis key for a workflow using the lookup hash with fallback to legacy method
       # @param workflow_id [String, Integer] the workflow identifier
+      # @param redis [Redis, nil] optional Redis connection (avoids nested pool usage)
       # @return [String, nil] the Redis key or nil if not found
-      def find_workflow_key(workflow_id)
-        # Try new lookup hash first
-        workflow_key = lookup_workflow_key(workflow_id)
-        return workflow_key if workflow_key.present?
-
-        # Fallback to old timestamp-based lookup for existing workflows
-        workflow_key = build_workflow_key_from_timestamps(workflow_id)
-
-        # If found via fallback, migrate it to the new lookup hash
-        if workflow_key.present?
-          store_workflow_key(workflow_id, workflow_key)
-        end
-
-        workflow_key
+      def find_workflow_key(workflow_id, redis = nil)
+        key_manager.find_workflow_key(workflow_id, redis)
       end
 
       # Changes the Sidekiq queue for a specific task
@@ -244,17 +241,13 @@ module SidekiqFlow
       end
 
       # Creates the initial Redis key for a new workflow and stores it in the lookup hash
+      # @deprecated Use key_manager.generate_initial_workflow_key instead
       # @param workflow_id [String, Integer] the workflow identifier
+      # @param timestamp [Integer] the Unix timestamp
+      # @param redis [Redis, nil] optional Redis connection (avoids nested pool usage)
       # @return [String] the generated workflow key
-      def generate_initial_workflow_key(workflow_id)
-        timestamp = Time.now.to_i
-
-        store_start_timestamp(workflow_id, timestamp)
-
-        workflow_key = "#{configuration.namespace}.#{workflow_id}_#{timestamp}_0"
-        store_workflow_key(workflow_id, workflow_key)
-
-        workflow_key
+      def generate_initial_workflow_key(workflow_id, timestamp, redis = nil)
+        key_manager.generate_initial_workflow_key(workflow_id, timestamp, redis)
       end
 
       # Checks if all tasks in the workflow have succeeded
@@ -292,15 +285,17 @@ module SidekiqFlow
       end
 
       # Returns the Redis pattern to match all workflow keys
+      # @deprecated Use key_manager.workflow_key_pattern instead
       # @return [String] the pattern for scanning workflow keys
       def workflow_key_pattern
-        "#{configuration.namespace}.*"
+        key_manager.workflow_key_pattern
       end
 
       # Returns the Redis pattern to match only completed workflow keys
+      # @deprecated Use key_manager.succeeded_workflow_key_pattern instead
       # @return [String] the pattern for scanning succeeded workflow keys
       def succeeded_workflow_key_pattern
-        "#{configuration.namespace}.*_*_[^0]*"
+        key_manager.succeeded_workflow_key_pattern
       end
 
       # Checks if a workflow has been started by looking for its key
@@ -319,9 +314,10 @@ module SidekiqFlow
       end
 
       # Returns the Redis namespace for workflow timestamp keys
+      # @deprecated Use key_manager.timestamp_namespace instead
       # @return [String] the timestamp namespace
       def timestamp_namespace
-        'workflow-timestamps'
+        key_manager.timestamp_namespace
       end
 
       # Stores the workflow start timestamp in Redis
@@ -335,75 +331,64 @@ module SidekiqFlow
       end
 
       # Returns the Redis namespace for the workflow key lookup hash
+      # @deprecated Use key_manager.workflow_keys_namespace instead
       # @return [String] the workflow keys namespace
       def workflow_keys_namespace
-        'workflow-keys'
+        key_manager.workflow_keys_namespace
       end
 
       # Retrieves a workflow key from the lookup hash
+      # @deprecated Use key_manager.lookup_workflow_key instead
       # @param workflow_id [String, Integer] the workflow identifier
+      # @param redis [Redis, nil] optional Redis connection (avoids nested pool usage)
       # @return [String, nil] the workflow key or nil if not found
-      def lookup_workflow_key(workflow_id)
-        connection_pool.with do |redis|
-          redis.hget(workflow_keys_namespace, workflow_id)
-        end
+      def lookup_workflow_key(workflow_id, redis = nil)
+        key_manager.lookup_workflow_key(workflow_id, redis)
       end
 
       # Stores a workflow key in the lookup hash for fast retrieval
+      # @deprecated Use key_manager.store_workflow_key instead
       # @param workflow_id [String, Integer] the workflow identifier
       # @param workflow_key [String] the Redis key to store
+      # @param redis [Redis, nil] optional Redis connection (avoids nested pool usage)
       # @return [void]
-      def store_workflow_key(workflow_id, workflow_key)
-        connection_pool.with do |redis|
-          redis.hset(workflow_keys_namespace, workflow_id, workflow_key)
-        end
+      def store_workflow_key(workflow_id, workflow_key, redis = nil)
+        key_manager.store_workflow_key(workflow_id, workflow_key, redis)
       end
 
       # Removes a workflow key from the lookup hash
+      # @deprecated Use key_manager.delete_workflow_key instead
       # @param workflow_id [String, Integer] the workflow identifier
+      # @param redis [Redis, nil] optional Redis connection (avoids nested pool usage)
       # @return [void]
-      def delete_workflow_key(workflow_id)
-        connection_pool.with do |redis|
-          redis.hdel(workflow_keys_namespace, workflow_id)
-        end
+      def delete_workflow_key(workflow_id, redis = nil)
+        key_manager.delete_workflow_key(workflow_id, redis)
       end
 
       # Legacy method that rebuilds a workflow key from timestamp keys (fallback for old workflows)
+      # @deprecated Use key_manager.build_workflow_key_from_timestamps instead
       # @param workflow_id [String, Integer] the workflow identifier
+      # @param redis [Redis, nil] optional Redis connection (avoids nested pool usage)
       # @return [String, nil] the reconstructed workflow key or nil if timestamps missing
-      def build_workflow_key_from_timestamps(workflow_id)
-        start_timestamp, end_timestamp = connection_pool.with do |redis|
-          redis.pipelined do |pipeline|
-            pipeline.get("#{timestamp_namespace}.#{workflow_id}.start")
-            pipeline.get("#{timestamp_namespace}.#{workflow_id}.end")
-          end
-        end
-
-        return nil unless start_timestamp
-
-        workflow_key = if end_timestamp && start_timestamp
-                         "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_#{end_timestamp}"
-                       elsif start_timestamp
-                         "#{configuration.namespace}.#{workflow_id}_#{start_timestamp}_0"
-                       end
-
-        # Verify the workflow data actually exists
-        unless workflow_key_exists?(workflow_key)
-          logger.warn("Workflow[#{workflow_id}] Timestamps exist but workflow data missing (key: #{workflow_key})")
-          return nil
-        end
-
-        workflow_key
+      def build_workflow_key_from_timestamps(workflow_id, redis = nil)
+        key_manager.build_workflow_key_from_timestamps(workflow_id, redis)
       end
 
       # Checks if a workflow key exists in Redis
+      # @deprecated Use key_manager.workflow_key_exists? instead
       # @param workflow_key [String] the Redis key to check
+      # @param redis [Redis, nil] optional Redis connection (avoids nested pool usage)
       # @return [Boolean] true if the key exists
-      def workflow_key_exists?(workflow_key)
-        connection_pool.with do |redis|
-          redis.exists?(workflow_key)
-        end
+      def workflow_key_exists?(workflow_key, redis = nil)
+        key_manager.workflow_key_exists?(workflow_key, redis)
       end
+
+      # Returns the key manager instance for workflow key operations
+      # @return [KeyManager] the key manager instance
+      def key_manager
+        @key_manager ||= KeyManager.new(connection_pool, configuration)
+      end
+
     end
   end
 end
