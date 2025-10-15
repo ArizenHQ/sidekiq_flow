@@ -322,10 +322,35 @@ RSpec.describe SidekiqFlow::Client do
     end
 
     context 'exception' do
+      it 'should raise WorkflowNotFound when workflow_key not found' do
+        expect {
+          subject
+        }.to raise_exception(SidekiqFlow::WorkflowNotFound)
+      end
+
+      it 'should log error when workflow_key not found' do
+        expect(described_class.send(:logger)).to receive(:error).with(/Cannot find workflow: workflow_key not found/)
+        expect { subject }.to raise_exception(SidekiqFlow::WorkflowNotFound)
+      end
+    end
+
+    context 'workflow data empty' do
+      let(:empty_key) { "#{SidekiqFlow.configuration.namespace}.#{workflow.id}_1234567890_0" }
+
+      before do
+        redis.hset('workflow-keys', workflow.id, empty_key)
+        # Key exists in lookup hash but no workflow data
+      end
+
       it 'should raise WorkflowNotFound' do
         expect {
           subject
         }.to raise_exception(SidekiqFlow::WorkflowNotFound)
+      end
+
+      it 'should log error before raising' do
+        expect(described_class.send(:logger)).to receive(:error).with(/Cannot find workflow: workflow data is empty/)
+        expect { subject }.to raise_exception(SidekiqFlow::WorkflowNotFound)
       end
     end
   end
@@ -366,13 +391,28 @@ RSpec.describe SidekiqFlow::Client do
 
         expect(redis_key_count).to eq(1)
 
+        # Succeeded workflow should be deleted
         expect {
           SidekiqFlow::Client.find_workflow(workflow.id)
         }.to raise_exception(SidekiqFlow::WorkflowNotFound)
 
+        # In-progress workflow should still exist
         expect {
           SidekiqFlow::Client.find_workflow(workflow2.id)
         }.not_to raise_error
+      end
+
+      it 'should remove workflow from lookup hash' do
+        subject
+
+        expect(redis.hget('workflow-keys', workflow.id)).to be_nil
+      end
+
+      it 'should delete timestamp keys' do
+        subject
+
+        expect(redis.get("workflow-timestamps.#{workflow.id}.start")).to be_nil
+        expect(redis.get("workflow-timestamps.#{workflow.id}.end")).to be_nil
       end
     end
   end
@@ -433,19 +473,23 @@ RSpec.describe SidekiqFlow::Client do
   describe '.find_workflow_key' do
     subject { described_class.find_workflow_key(workflow.id) }
 
-    before do
-      described_class.start_workflow(workflow)
-    end
+    context 'happy path' do
+      before do
+        described_class.start_workflow(workflow)
+      end
 
-    context 'success' do
-      context 'in-progress' do
+      context 'in-progress workflow' do
         it 'should return the correct key' do
           result = subject
           expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_0/)
         end
+
+        it 'should lookup from workflow-keys hash' do
+          expect(redis.hget('workflow-keys', workflow.id)).to be_present
+        end
       end
 
-      context 'completed' do
+      context 'completed workflow' do
         before do
           described_class.send(:succeed_workflow, workflow.id)
         end
@@ -454,18 +498,105 @@ RSpec.describe SidekiqFlow::Client do
           result = subject
           expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d{10}_\d{10}/)
         end
+
+        it 'should update workflow-keys hash with new key' do
+          expect(redis.hget('workflow-keys', workflow.id)).to match(/_\d{10}_\d{10}$/)
+        end
       end
     end
 
-    # NOTE: existing behavior can return already succeeded workflows
-    context 'failure scenario' do
-      it 'returns the wrong key' do
-        SidekiqFlow::Worker.drain
+    context 'edge cases' do
+      context 'workflow not found' do
+        it 'should return nil' do
+          expect(subject).to be_nil
+        end
 
-        described_class.start_workflow(workflow)
+        it 'should not have entry in workflow-keys hash' do
+          expect(redis.hget('workflow-keys', workflow.id)).to be_nil
+        end
+      end
 
-        result = subject
-        expect(result).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_\d{2,}/)
+      context 'legacy workflow (no lookup hash entry, only timestamps)' do
+        let(:legacy_key) { "#{SidekiqFlow.configuration.namespace}.#{workflow.id}_1234567890_0" }
+
+        before do
+          # Simulate old workflow: create workflow hash and timestamps but NO lookup hash entry
+          redis.hset(legacy_key, 'klass', 'TestWorkflow')
+          redis.set("workflow-timestamps.#{workflow.id}.start", '1234567890')
+        end
+
+        it 'should find key via timestamp fallback' do
+          expect(subject).to eq(legacy_key)
+        end
+
+        it 'should auto-migrate to lookup hash' do
+          subject
+          expect(redis.hget('workflow-keys', workflow.id)).to eq(legacy_key)
+        end
+      end
+
+      context 'corrupted state: timestamps exist but workflow data missing' do
+        before do
+          redis.set("workflow-timestamps.#{workflow.id}.start", '1234567890')
+          # No workflow hash created
+        end
+
+        it 'should return nil' do
+          expect(subject).to be_nil
+        end
+
+        it 'should log warning' do
+          expect(described_class.send(:logger)).to receive(:warn).with(/Timestamps exist but workflow data missing/)
+          subject
+        end
+      end
+
+      context 'workflow-keys hash entry exists but points to deleted workflow' do
+        let(:stale_key) { "#{SidekiqFlow.configuration.namespace}.#{workflow.id}_1234567890_0" }
+
+        before do
+          redis.hset('workflow-keys', workflow.id, stale_key)
+          # Workflow hash at stale_key doesn't exist
+        end
+
+        it 'should return the stale key (caller will handle missing data)' do
+          expect(subject).to eq(stale_key)
+        end
+      end
+    end
+
+    context 'race conditions' do
+      context 'workflow deleted between lookup and use' do
+        before do
+          described_class.start_workflow(workflow)
+        end
+
+        it 'should return key even if workflow gets deleted after lookup' do
+          key = subject
+          described_class.destroy_workflow(workflow.id)
+
+          # Key should still be returned from cache
+          expect(key).to match(/#{SidekiqFlow.configuration.namespace}\.#{workflow.id}_\d+_0/)
+
+          # But next lookup should return nil
+          expect(described_class.find_workflow_key(workflow.id)).to be_nil
+        end
+      end
+
+      context 'workflow succeeds during multiple lookups' do
+        before do
+          described_class.start_workflow(workflow)
+        end
+
+        it 'should return consistent keys' do
+          key1 = subject
+          described_class.send(:succeed_workflow, workflow.id)
+          key2 = described_class.find_workflow_key(workflow.id)
+
+          expect(key1).to match(/_0$/)
+          expect(key2).to match(/_\d{10}$/)
+          expect(key1).not_to eq(key2)
+        end
       end
     end
   end
