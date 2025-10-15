@@ -388,7 +388,6 @@ module SidekiqFlow
       def key_manager
         @key_manager ||= KeyManager.new(connection_pool, configuration)
       end
-
     end
   end
 end
