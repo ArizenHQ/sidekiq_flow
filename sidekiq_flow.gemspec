@@ -34,7 +34,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "sidekiq", "< 7"
   spec.add_dependency "redis", ["< 5", ">= 4.5.0"]
   spec.add_dependency "connection_pool", ["< 3", ">= 2.2.5"]
-  spec.add_dependency "activesupport", "< 7"
+  spec.add_dependency "activesupport"
   spec.add_runtime_dependency "sinatra"
   spec.add_runtime_dependency "thin"
   spec.add_runtime_dependency "sprockets"
