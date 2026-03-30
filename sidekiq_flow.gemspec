@@ -39,7 +39,6 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "thin"
   spec.add_runtime_dependency "sprockets"
   spec.add_runtime_dependency "uglifier"
-  spec.add_runtime_dependency "sass"
   spec.add_runtime_dependency "timecop"
 
   spec.add_development_dependency "bundler"
