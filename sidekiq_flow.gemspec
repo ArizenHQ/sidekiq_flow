@@ -29,17 +29,16 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = ">= 2.7.0"
+  spec.required_ruby_version = ">= 3.2.0"
 
   spec.add_dependency "sidekiq", "< 7"
   spec.add_dependency "redis", ["< 5", ">= 4.5.0"]
-  spec.add_dependency "connection_pool", ["< 3", ">= 2.2.5"]
+  spec.add_dependency "connection_pool"
   spec.add_dependency "activesupport"
   spec.add_runtime_dependency "sinatra"
   spec.add_runtime_dependency "thin"
   spec.add_runtime_dependency "sprockets"
   spec.add_runtime_dependency "uglifier"
-  spec.add_runtime_dependency "sass"
   spec.add_runtime_dependency "timecop"
 
   spec.add_development_dependency "bundler"
