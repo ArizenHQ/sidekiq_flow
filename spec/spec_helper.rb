@@ -1,5 +1,4 @@
 require 'bundler/setup'
-require 'fakeredis'
 require 'sidekiq/testing'
 require 'sidekiq_flow'
 require 'test_workflow'
