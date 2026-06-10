@@ -67,7 +67,7 @@ module SidekiqFlow
         connection_pool.with do |redis|
           fields = [:klass, workflow.klass, :attrs, workflow.to_json] +
                    workflow.tasks.map { |t| [t.klass, t.to_json] }.flatten
-          redis.hset(workflow_key, *fields)
+          redis.hset(workflow_key, fields)
         end
       end
 
