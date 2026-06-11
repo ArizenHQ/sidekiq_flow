@@ -9,6 +9,7 @@ require 'uglifier'
 
 require "sidekiq_flow/version"
 require "sidekiq_flow/configuration"
+require "sidekiq_flow/key_manager"
 require "sidekiq_flow/client"
 require "sidekiq_flow/model"
 require "sidekiq_flow/task"
