@@ -1,27 +1,42 @@
-<script src="<%= app_prefix %>/js/graph.js"></script>
+<script type="module" src="<%= app_prefix %>/js/graph.js"></script>
 
-<h1>Workflow <%= @workflow.id %></h1>
-<svg id='workflow-graph' width='100%' height='400'>
-  <g class='viewport'></g>
-</svg>
+<div class="mb-6 flex items-center gap-3">
+  <a href="<%= app_prefix %>/" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors" aria-label="Back to workflows">
+    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clip-rule="evenodd" />
+    </svg>
+  </a>
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900">
+    Workflow <span class="font-mono text-indigo-600"><%= @workflow.id %></span>
+  </h1>
+</div>
 
-<div id='task-modal' class='modal' tabindex='-1' role='dialog'>
-  <div class='modal-dialog' role='document'>
-    <div class='modal-content'>
-      <div class="modal-header">
-        <h5 class='modal-title'></h5>
-        <button type='button' class='close' data-dismiss='modal' aria-label='Close'>
-          <span aria-hidden='true'>&times;</span>
-        </button>
+<div class="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
+  <svg id='workflow-graph' class="w-full h-[70vh] rounded-lg border border-slate-200 bg-slate-50" height='400'>
+    <g class='viewport'></g>
+  </svg>
+</div>
+
+<div id='task-modal' class='fixed inset-0 z-50 hidden' role='dialog' aria-modal='true'>
+  <div id='task-modal-backdrop' class='fixed inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 transition-opacity duration-150 ease-out' data-modal-dismiss></div>
+  <div id='task-modal-panel' class='relative mx-auto mt-24 w-full max-w-lg scale-95 rounded-xl bg-white opacity-0 shadow-2xl ring-1 ring-slate-200 transition-all duration-150 ease-out'>
+    <div class='flex items-center justify-between border-b border-slate-200 px-5 py-4'>
+      <h5 class='modal-title text-base font-semibold text-slate-900'></h5>
+      <button type='button' class='rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors' data-modal-dismiss aria-label='Close'>
+        <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+        </svg>
+      </button>
+    </div>
+    <div class='px-5 py-4'>
+      <div id='task-attrs' class="divide-y divide-slate-100 text-sm"></div>
+      <div class="mt-5 flex gap-2">
+        <button id='retry-task' type='button' class='inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 transition-colors'>Retry task</button>
+        <button id='clear-task' type='button' class='inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors'>Clear task</button>
       </div>
-      <div class='modal-body'>
-        <div id='task-attrs'></div>
-        <button id='retry-task' type='button' class='btn btn-info'>Retry task</button>
-        <button id='clear-task' type='button' class='btn btn-info'>Clear task</button>
-      </div>
-      <div class='modal-footer'>
-        <button type='button' class='btn btn-secondary' data-dismiss='modal'>Close</button>
-      </div>
+    </div>
+    <div class='flex justify-end border-t border-slate-200 px-5 py-3'>
+      <button type='button' class='rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100 transition-colors' data-modal-dismiss>Close</button>
     </div>
   </div>
 </div>

@@ -36,9 +36,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "connection_pool"
   spec.add_dependency "activesupport"
   spec.add_runtime_dependency "sinatra"
-  spec.add_runtime_dependency "thin"
-  spec.add_runtime_dependency "sprockets"
-  spec.add_runtime_dependency "uglifier"
+  spec.add_runtime_dependency "puma"
   spec.add_runtime_dependency "timecop"
 
   spec.add_development_dependency "bundler"
@@ -46,4 +44,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec"
   spec.add_development_dependency "timecop"
   spec.add_development_dependency "byebug"
+  spec.add_development_dependency "rackup"
 end

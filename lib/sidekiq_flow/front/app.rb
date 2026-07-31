@@ -2,13 +2,7 @@ module SidekiqFlow
   module Front
     class App < Sinatra::Base
       enable :logging
-      set :server, :thin
-      set :environment, Sprockets::Environment.new(File.dirname(__FILE__))
-
-      environment.append_path 'assets/stylesheets'
-      environment.append_path 'assets/javascripts'
-      environment.js_compressor  = :uglify
-      environment.css_compressor = :scss
+      set :server, :puma
 
       helpers do
         def app_prefix
@@ -16,9 +10,11 @@ module SidekiqFlow
         end
       end
 
-      get %r{/(js|css)/.+} do |asset_type|
-        env['PATH_INFO'].sub!("/#{asset_type}", '')
-        settings.environment.call(env)
+      get %r{/(js|css)/(.+)} do |asset_type, filename|
+        dir = asset_type == 'js' ? 'javascripts' : 'stylesheets'
+        path = File.join(File.dirname(__FILE__), 'assets', dir, filename)
+        halt 404 unless File.file?(path)
+        send_file path
       end
 
       get '/' do
@@ -36,11 +32,12 @@ module SidekiqFlow
         )
         search.execute!
 
-        json(
+        content_type :json
+        {
           recordsTotal: search.input_data_size,
           recordsFiltered: search.filtered_data_size,
           data: search.data
-        )
+        }.to_json
       end
 
       get '/workflow/:id' do |id|

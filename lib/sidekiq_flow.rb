@@ -4,8 +4,6 @@ require 'connection_pool'
 require 'redis'
 require 'sidekiq'
 require 'sinatra/base'
-require 'sprockets'
-require 'uglifier'
 
 require "sidekiq_flow/version"
 require "sidekiq_flow/configuration"
