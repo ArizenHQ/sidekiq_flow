@@ -73,6 +73,9 @@ module SidekiqFlow
           begin
             perform(child_task.workflow_id, child_class)
           rescue StandardError
+            # perform() re-fetches and mutates its own Task instance internally, so child_task here is
+            # stale (still 'pending') - re-fetch to see the status perform_task actually persisted.
+            child_task = Client.find_task(child_task.workflow_id, child_class)
             Client.enqueue_task(child_task, (Time.now + DEFAULT_RETRY_DELAY).to_i) if child_task.awaiting_retry?
           end
         else

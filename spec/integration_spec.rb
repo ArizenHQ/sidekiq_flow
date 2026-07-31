@@ -282,17 +282,17 @@ RSpec.describe 'workflow' do
         SidekiqFlow::Client.start_workflow(workflow)
 
         SidekiqFlow::Worker.perform_one
-        # Task 1 succeed, which perform task 2 and enqueue task 3.
-        # Task 2 raise a retry and is enqueued.
+        # Task 1 succeed, which performs task 2 inline (fails, retry gets scheduled) and enqueues task 3.
         expect(task_states(workflow)).to match_array([
-                                                       'TestTask1 - succeeded', 'TestTask2 - awaiting_retry', 'TestTask3 - enqueued', 'TestTask4 - pending'
+                                                       'TestTask1 - succeeded', 'TestTask2 - enqueued', 'TestTask3 - enqueued', 'TestTask4 - pending'
                                                      ])
 
-        SidekiqFlow::Worker.perform_one
-
-        # Task 3 succeed, which cannot inline task 4 as it is waiting for task 2.
+        # Task 2's scheduled retry runs next (it was pushed before task 3's job) and fails again.
+        expect do
+          SidekiqFlow::Worker.perform_one
+        end.to raise_error(RuntimeError)
         expect(task_states(workflow)).to match_array([
-                                                       'TestTask1 - succeeded', 'TestTask2 - awaiting_retry', 'TestTask3 - succeeded', 'TestTask4 - pending'
+                                                       'TestTask1 - succeeded', 'TestTask2 - awaiting_retry', 'TestTask3 - enqueued', 'TestTask4 - pending'
                                                      ])
 
         allow_any_instance_of(TestTask2).to receive(:perform).and_return(true)
@@ -302,8 +302,8 @@ RSpec.describe 'workflow' do
         # start task
         SidekiqFlow::Client.start_task(workflow.id, 'TestTask2')
 
-        SidekiqFlow::Worker.perform_one
-        # Task 2 succeed, which perform task 4.
+        SidekiqFlow::Worker.drain
+        # Task 3 (already enqueued) and task 2 (restarted) both succeed, which performs task 4 inline.
         expect(task_states(workflow)).to match_array([
                                                        'TestTask1 - succeeded', 'TestTask2 - succeeded', 'TestTask3 - succeeded', 'TestTask4 - succeeded'
                                                      ])
