@@ -22,7 +22,7 @@ module SidekiqFlow
       end
 
       get '/workflows' do
-        search = DataTableSearch.new(
+        search = WorkflowsSearch.new(
           params.dig('search', 'value'),
           params.dig('order', '0', 'column').to_i,
           params.dig('order', '0', 'dir'),

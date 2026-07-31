@@ -1,6 +1,6 @@
 module SidekiqFlow
   module Front
-    class DataTableSearch
+    class WorkflowsSearch
       attr_reader :input_data_size, :filtered_data_size, :data
 
       def initialize(value, order_column_index, order_dir, start_index, page_size, app_prefix)

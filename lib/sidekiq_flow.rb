@@ -18,7 +18,7 @@ require "sidekiq_flow/task_trigger_rules/all_succeeded"
 require "sidekiq_flow/task_trigger_rules/number_succeeded"
 require "sidekiq_flow/front/app"
 require "sidekiq_flow/front/serializers/workflow_serializer"
-require "sidekiq_flow/front/searches/data_table_search"
+require "sidekiq_flow/front/searches/workflows_search"
 require "sidekiq_flow/task_logger"
 
 module SidekiqFlow
