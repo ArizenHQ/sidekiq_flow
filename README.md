@@ -8,6 +8,27 @@ Workflow runner, inspired by [gush](https://github.com/chaps-io/gush) gem.
 Parallel runner for DAG (directed acyclic graph) defined workflows.
 It uses Sidekiq for scheduling and executing jobs and Redis as workflows storage.
 
+Requires Ruby >= 3.2 (tested through Ruby 3.4).
+
+
+## Web dashboard
+
+SidekiqFlow ships with a small Sinatra app (`SidekiqFlow::Front::App`) for inspecting and managing workflows without needing console access.
+
+Mount it as a Rack app, e.g. in a `config.ru`:
+```ruby
+require 'sidekiq_flow'
+run SidekiqFlow::Front::App
+```
+
+It provides:
+* a searchable, sortable, paginated list of all workflows with their start/succeeded times
+* a per-workflow DAG view rendering the task graph, color-coded by status (pending, enqueued, succeeded, failed, skipped, awaiting_retry)
+* retrying or clearing a task directly from the graph
+* bulk deletion of succeeded workflows
+
+The UI is built with Tailwind CSS (loaded via CDN) and plain JavaScript (ES modules) — no Node toolchain or asset build step required. Assets are served directly by Sinatra/Puma. Graph rendering uses [d3](https://d3js.org/) and [dagre-d3-es](https://github.com/tbo47/dagre-es).
+
 
 ## Workflow definition
 

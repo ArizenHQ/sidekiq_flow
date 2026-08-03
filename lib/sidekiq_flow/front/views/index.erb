@@ -1,27 +1,47 @@
-<p>
-  <a class='btn btn-danger float-right' href="<%= app_prefix %>/workflows/succeeded/destroy" onclick="return confirm('Are you sure?')">
-    <i class='fas fa-trash'></i>&nbsp;Destroy succeeded workflows
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900">Workflows</h1>
+    <p class="mt-1 text-sm text-slate-500">Monitor and manage your Sidekiq workflow runs.</p>
+  </div>
+  <a class="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2" href="<%= app_prefix %>/workflows/succeeded/destroy" onclick="return confirm('Are you sure?')">
+    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
+    </svg>
+    Destroy succeeded
   </a>
-</p>
+</div>
 
-<h1>Workflows</h1>
+<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+  <div class="border-b border-slate-200 p-4">
+    <div class="relative max-w-xs">
+      <svg class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" />
+      </svg>
+      <input id="workflows-search" type="text" placeholder="Search workflows..." class="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+    </div>
+  </div>
 
-<table id='workflows-table' class='display' style='width:100%'>
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Started at</th>
-      <th>Succeeded at</th>
-      <th class='no-sort'>#</th>
-    </tr>
-  </thead>
-</table>
+  <div class="overflow-x-auto">
+    <table id="workflows-table" class="w-full text-sm text-left">
+      <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <tr>
+          <th data-sort="0" class="px-4 py-2 cursor-pointer select-none hover:text-slate-700">ID</th>
+          <th data-sort="1" class="px-4 py-2 cursor-pointer select-none hover:text-slate-700">Started at</th>
+          <th data-sort="2" class="px-4 py-2 cursor-pointer select-none hover:text-slate-700">Succeeded at</th>
+          <th class="px-4 py-2 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100"></tbody>
+    </table>
+  </div>
 
-<script>
-  $('#workflows-table').DataTable({
-    order: [[1, 'desc']],
-    processing: true,
-    serverSide: true,
-    ajax: "<%= app_prefix %>/workflows"
-  });
-</script>
+  <div class="flex items-center justify-between border-t border-slate-200 px-4 py-2 text-sm text-slate-500">
+    <span id="workflows-page-info"></span>
+    <div class="flex gap-2">
+      <button id="workflows-prev" type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Previous</button>
+      <button id="workflows-next" type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">Next</button>
+    </div>
+  </div>
+</div>
+
+<script src="<%= app_prefix %>/js/workflows_table.js"></script>

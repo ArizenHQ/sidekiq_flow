@@ -1,5 +1,5 @@
 # Use the official Ruby image as a parent image
-FROM ruby:3.3
+FROM ruby:3.4
 
 # Set environment variables to avoid warnings during installation
 ENV DEBIAN_FRONTEND=noninteractive
