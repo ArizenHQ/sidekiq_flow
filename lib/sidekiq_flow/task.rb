@@ -7,11 +7,27 @@ module SidekiqFlow
     STATUS_SKIPPED = 'skipped'
     STATUS_AWAITING_RETRY = 'awaiting_retry'
 
+    class_attribute :sidekiq_options_hash, instance_writer: false, instance_reader: false
+
     def self.attribute_names
       [
         :start_date, :end_date, :loop_interval, :retries, :queue, :inline,
         :children, :status, :trigger_rule, :params, :error_msg
       ]
+    end
+
+    # Class-level Sidekiq options, same API as a regular Sidekiq worker.
+    # Currently used to default +task.queue+ (+queue+) and +task.retries+ (+retry+).
+    #
+    #   class CriticalTask < SidekiqFlow::Task
+    #     sidekiq_options queue: 'critical', retry: 5
+    #   end
+    def self.sidekiq_options(opts = {})
+      self.sidekiq_options_hash = get_sidekiq_options.merge(opts.stringify_keys)
+    end
+
+    def self.get_sidekiq_options
+      self.sidekiq_options_hash ||= {}
     end
 
     attr_reader :workflow, :workflow_id, :workflow_params, :parents
@@ -21,8 +37,8 @@ module SidekiqFlow
       @start_date = attrs.fetch(:start_date, Time.now.to_i) # may return nil for manual start
       @end_date = attrs[:end_date]
       @loop_interval = attrs[:loop_interval] || 0
-      @retries = attrs[:retries] || SidekiqFlow.configuration.retries
-      @queue = attrs[:queue] || SidekiqFlow.configuration.queue
+      @retries = attrs[:retries] || self.class.get_sidekiq_options['retry'] || SidekiqFlow.configuration.retries
+      @queue = attrs[:queue] || self.class.get_sidekiq_options['queue'] || SidekiqFlow.configuration.queue
       @children = attrs[:children] || []
       @status = attrs[:status] || STATUS_PENDING
       @trigger_rule = attrs[:trigger_rule] || ['all_succeeded', {}]
