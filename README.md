@@ -86,10 +86,12 @@ By starting the workflow, we understand starting all tasks having no parents (`T
   * how many times task will be retried after unexpected failure
   * this is handled by Sidekiq's retries mechanism under the hood
   * by default is 0
+  * can also be set at class level via `sidekiq_options retry: N` (overridable per instance)
 
 * `queue`
   * determines the redis queque used by given task
   * `default` queue is used when not specified
+  * can also be set at class level via `sidekiq_options queue: 'name'` (overridable per instance)
 
 * `trigger_rule`
   * defines parents conditions that need to be met to trigger the child
@@ -136,12 +138,17 @@ SidekiqFlow::TryLater.new(delay_time: 15.minutes) # task will be repeated once a
 As tasks are Sidekiq jobs, all you need to implement is `perform` method. E.g.
 ```ruby
 class TestTask < SidekiqFlow::Task
+  sidekiq_options queue: 'critical', retry: 5
+
   def perform
     # implement me!
   end
 end
 ```
 You have access to all task attributes inside `SidekiqFlow::Task` instance.
+
+Class-level `sidekiq_options` works like a regular Sidekiq worker and defaults `queue` / `retries`
+for every instance. Values passed to `Task.new(...)` still take precedence.
 
 
 ## Client

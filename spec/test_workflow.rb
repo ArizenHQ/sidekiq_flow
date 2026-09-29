@@ -22,6 +22,12 @@ class TestTaskStartDateOverloaded < SidekiqFlow::Task
   end
 end
 
+class TestTaskWithSidekiqOptions < SidekiqFlow::Task
+  sidekiq_options queue: 'critical', retry: 5
+
+  def perform; end
+end
+
 class TestWorkflow < SidekiqFlow::Workflow
   def succeeded?
     find_task(TestTask4.to_s).succeeded?
