@@ -6,11 +6,9 @@ name: sidekiq_flow CI
 
 on:
   push:
+    # Only branches are filtered, so tag pushes (releases) do not trigger a run
     branches:
     - 'master'
-    # this ensures that the workflow will not run when a tag is pushed to the repository.
-    tags:
-    - "!**"
   pull_request:
 
 defaults:
@@ -57,7 +55,8 @@ jobs:
         bundler-cache: true
 
     - name: Show resolved versions
-      run: bundle exec ruby -e 'require "sidekiq"; puts "Ruby #{RUBY_VERSION}, Sidekiq #{Sidekiq::VERSION}"'
+      run: |
+        bundle exec ruby -e 'require "sidekiq"; puts "Ruby #{RUBY_VERSION}, Sidekiq #{Sidekiq::VERSION}"'
 
     - name: Run specs
       timeout-minutes: ${{ fromJSON(env.STEP_TIMEOUT) }}
