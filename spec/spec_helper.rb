@@ -1,6 +1,12 @@
 require 'bundler/setup'
-require 'sidekiq/testing'
 require 'sidekiq_flow'
+
+# Sidekiq 8.1 deprecates require 'sidekiq/testing' in favor of Sidekiq.testing!
+if Sidekiq.respond_to?(:testing!)
+  Sidekiq.testing!(:fake)
+else
+  require 'sidekiq/testing'
+end
 require 'test_workflow'
 require 'timecop'
 
@@ -19,6 +25,6 @@ RSpec.configure do |config|
 
   config.before(:each) do
     $redis.flushdb
-    Sidekiq::Worker.clear_all
+    Sidekiq::Job.clear_all
   end
 end

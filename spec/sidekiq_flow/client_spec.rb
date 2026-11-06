@@ -14,12 +14,12 @@ RSpec.shared_examples '.start_workflow common' do
   it 'should enqueue a job to Sidekiq' do
     expect {
       subject
-    }.to change { Sidekiq::Worker.jobs.count }.from(0).to(1)
+    }.to change { Sidekiq::Job.jobs.count }.from(0).to(1)
   end
 
   it 'should enqueue TestTask1 job to Sidekiq' do
     subject
-    expect(Sidekiq::Worker.jobs.first['args'][1]).to eq('TestTask1')
+    expect(Sidekiq::Job.jobs.first['args'][1]).to eq('TestTask1')
   end
 end
 
@@ -67,7 +67,7 @@ RSpec.describe SidekiqFlow::Client do
 
         it 'should have 1 job in sidekiq' do
           subject
-          expect(Sidekiq::Worker.jobs.count).to eq(1)
+          expect(Sidekiq::Job.jobs.count).to eq(1)
         end
       end
 
@@ -80,7 +80,7 @@ RSpec.describe SidekiqFlow::Client do
 
         it 'should have 1 job in sidekiq' do
           subject
-          expect(Sidekiq::Worker.jobs.count).to eq(1)
+          expect(Sidekiq::Job.jobs.count).to eq(1)
         end
       end
     end
@@ -99,12 +99,12 @@ RSpec.describe SidekiqFlow::Client do
       it 'should enqueue a job to Sidekiq' do
         expect {
           subject
-        }.to change { Sidekiq::Worker.jobs.count }.from(1).to(2)
+        }.to change { Sidekiq::Job.jobs.count }.from(1).to(2)
       end
 
       it 'should enqueue TestTask2 job to Sidekiq' do
         subject
-        expect(Sidekiq::Worker.jobs.last['args'][1]).to eq(task_klass)
+        expect(Sidekiq::Job.jobs.last['args'][1]).to eq(task_klass)
       end
     end
 
@@ -132,12 +132,12 @@ RSpec.describe SidekiqFlow::Client do
       it 'should enqueue a job to Sidekiq' do
         expect {
           subject
-        }.to change { Sidekiq::Worker.jobs.count }.from(1).to(2)
+        }.to change { Sidekiq::Job.jobs.count }.from(1).to(2)
       end
 
       it 'should enqueue TestTask2 job to Sidekiq' do
         subject
-        expect(Sidekiq::Worker.jobs.last['args'][1]).to eq(task_klass)
+        expect(Sidekiq::Job.jobs.last['args'][1]).to eq(task_klass)
       end
     end
 
@@ -147,16 +147,16 @@ RSpec.describe SidekiqFlow::Client do
       it 'should NOT enqueue a new job to Sidekiq' do
         expect {
           subject
-        }.not_to change { Sidekiq::Worker.jobs.count }
+        }.not_to change { Sidekiq::Job.jobs.count }
       end
 
       it 'should only have 1 job' do
         subject
-        expect(Sidekiq::Worker.jobs.count).to eq(1)
+        expect(Sidekiq::Job.jobs.count).to eq(1)
       end
 
       it 'should only have 1 TestTask1 job' do
-        expect(Sidekiq::Worker.jobs.first['args'][1]).to eq(task_klass)
+        expect(Sidekiq::Job.jobs.first['args'][1]).to eq(task_klass)
       end
     end
   end
@@ -460,12 +460,12 @@ RSpec.describe SidekiqFlow::Client do
       it 'should enqueue a job to Sidekiq' do
         expect {
           subject
-        }.to change { Sidekiq::Worker.jobs.count }.from(1).to(2)
+        }.to change { Sidekiq::Job.jobs.count }.from(1).to(2)
       end
 
       it 'should enqueue TestTask2 job to Sidekiq' do
         subject
-        expect(Sidekiq::Worker.jobs.last['args'][1]).to eq('TestTask2')
+        expect(Sidekiq::Job.jobs.last['args'][1]).to eq('TestTask2')
       end
     end
   end
