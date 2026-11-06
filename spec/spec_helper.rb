@@ -1,7 +1,8 @@
 require 'bundler/setup'
 require 'sidekiq_flow'
 
-# Sidekiq 8.1 deprecates require 'sidekiq/testing' in favor of Sidekiq.testing!
+# Sidekiq.testing! exists since 8.1, which deprecates require 'sidekiq/testing'.
+# Drop the fallback once the gemspec requires sidekiq >= 8.1.
 if Sidekiq.respond_to?(:testing!)
   Sidekiq.testing!(:fake)
 else

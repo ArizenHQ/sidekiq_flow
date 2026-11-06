@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   rspec:
     runs-on: ubuntu-latest
@@ -26,4 +29,6 @@ jobs:
         with:
           ruby-version: '4.0'
           bundler-cache: true
+      - name: Show resolved versions
+        run: bundle exec ruby -e 'require "sidekiq"; puts "Ruby #{RUBY_VERSION}, Sidekiq #{Sidekiq::VERSION}"'
       - run: bundle exec rspec
