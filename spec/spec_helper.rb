@@ -1,9 +1,17 @@
 require 'bundler/setup'
-require 'sidekiq/testing'
 require 'sidekiq_flow'
+
+# Sidekiq.testing! exists since 8.1, which deprecates require 'sidekiq/testing'.
+# Drop the fallback once the gemspec requires sidekiq >= 8.1.
+if Sidekiq.respond_to?(:testing!)
+  Sidekiq.testing!(:fake)
+else
+  require 'sidekiq/testing'
+end
 require 'test_workflow'
 require 'timecop'
 
+SidekiqFlow.configuration.redis_url = ENV['REDIS_URL'] if ENV['REDIS_URL']
 $redis = Redis.new(url: SidekiqFlow.configuration.redis_url)
 
 RSpec.configure do |config|
@@ -19,6 +27,6 @@ RSpec.configure do |config|
 
   config.before(:each) do
     $redis.flushdb
-    Sidekiq::Worker.clear_all
+    Sidekiq::Job.clear_all
   end
 end

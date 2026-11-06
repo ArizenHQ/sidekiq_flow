@@ -142,7 +142,7 @@ RSpec.describe 'workflow' do
   end
 
   describe 'task reptition with delay' do
-    let(:first_job_at) { Sidekiq::Worker.jobs.dig(0, 'at') }
+    let(:first_job_at) { Sidekiq::Job.jobs.dig(0, 'at') }
 
     before do
       allow(TestWorkflow).to receive(:initial_tasks) {
@@ -163,7 +163,7 @@ RSpec.describe 'workflow' do
 
       allow_any_instance_of(TestTask1).to receive(:perform) { raise SidekiqFlow::TryLater.new(delay_time: 15.minutes) }
       expect { SidekiqFlow::Worker.perform_one }.to change {
-                                                      Sidekiq::Worker.jobs.dig(0, 'at')
+                                                      Sidekiq::Job.jobs.dig(0, 'at')
                                                     }.to(first_job_at + 15.minutes.to_i)
     end
   end

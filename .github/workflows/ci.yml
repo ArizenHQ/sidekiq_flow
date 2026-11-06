@@ -1,0 +1,63 @@
+# CI for sidekiq_flow: runs the rspec suite against a Valkey service container.
+#
+# Runs on push to master and on every pull request. No Gemfile.lock is committed,
+# so bundler resolves the latest gem versions allowed by the gemspec (Sidekiq 8).
+name: sidekiq_flow CI
+
+on:
+  push:
+    # Only branches are filtered, so tag pushes (releases) do not trigger a run
+    branches:
+    - 'master'
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  RUBY_VERSION: 4.0.9
+  STEP_TIMEOUT: 10
+
+permissions:
+  contents: read
+
+jobs:
+  rspec:
+    runs-on: ubuntu-latest
+
+    services:
+      valkey:
+        image: valkey/valkey:9.1-alpine
+        ports:
+        - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1.336.0
+      with:
+        ruby-version: ${{ env.RUBY_VERSION }}
+        bundler-cache: true
+
+    - name: Show resolved versions
+      run: |
+        bundle exec ruby -e 'require "sidekiq"; puts "Ruby #{RUBY_VERSION}, Sidekiq #{Sidekiq::VERSION}"'
+
+    - name: Run specs
+      timeout-minutes: ${{ fromJSON(env.STEP_TIMEOUT) }}
+      run: bundle exec rspec
