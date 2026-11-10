@@ -59,10 +59,10 @@ RSpec.describe SidekiqFlow::Task do
       )
       SidekiqFlow::Client.start_workflow(workflow)
 
-      expect(Sidekiq::Worker.jobs.count).to eq(1)
-      expect(Sidekiq::Worker.jobs.first['args'][1]).to eq('TestTaskWithSidekiqOptions')
-      expect(Sidekiq::Worker.jobs.first['queue']).to eq('critical')
-      expect(Sidekiq::Worker.jobs.first['retry']).to eq(5)
+      expect(Sidekiq::Job.jobs.count).to eq(1)
+      expect(Sidekiq::Job.jobs.first['args'][1]).to eq('TestTaskWithSidekiqOptions')
+      expect(Sidekiq::Job.jobs.first['queue']).to eq('critical')
+      expect(Sidekiq::Job.jobs.first['retry']).to eq(5)
     end
   end
 end

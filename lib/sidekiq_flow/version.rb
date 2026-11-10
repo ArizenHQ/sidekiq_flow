@@ -1,3 +1,3 @@
 module SidekiqFlow
-  VERSION = "0.3.48"
+  VERSION = "0.5.0"
 end

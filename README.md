@@ -8,7 +8,7 @@ Workflow runner, inspired by [gush](https://github.com/chaps-io/gush) gem.
 Parallel runner for DAG (directed acyclic graph) defined workflows.
 It uses Sidekiq for scheduling and executing jobs and Redis as workflows storage.
 
-Requires Ruby >= 3.2 (tested through Ruby 3.4).
+Requires Ruby >= 4.0 and Sidekiq 7 or 8 (CI runs the latest Sidekiq 8).
 
 
 ## Web dashboard

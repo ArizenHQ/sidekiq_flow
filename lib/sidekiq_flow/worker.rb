@@ -1,7 +1,7 @@
 module SidekiqFlow
   class Worker
 
-    include Sidekiq::Worker
+    include Sidekiq::Job
 
     DEFAULT_RETRY_DELAY = 5.seconds
 
